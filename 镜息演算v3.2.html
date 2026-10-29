@@ -1,0 +1,4334 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>镜息演算 · 边狱巴士技能伤害计算器</title>
+<style>
+/* ===================================================================
+   镜息演算 v2.0  样式层
+   设计语言参考：深色层次 + 玻璃拟态 + 蓝紫强调 + 统一缓动
+   =================================================================== */
+
+:root{
+  /* 优先思源黑体（Noto Sans SC 与其同源），逐级回退到系统黑体 */
+  --font: "Noto Sans SC", "Source Han Sans SC", "思源黑体",
+          "HarmonyOS Sans SC", "MiSans", "PingFang SC",
+          "Microsoft YaHei UI", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+  --mono: "Source Code Pro", "Cascadia Mono", "SF Mono", Consolas, "Liberation Mono", monospace;
+
+  /* —— 暗色（默认） —— */
+  --bg-0:#0b0e13;
+  --bg-1:#11161e;
+  --bg-2:#171d27;
+  --bg-3:#1f2732;
+  --ink-0:#eef2f7;
+  --ink-1:#c2cbda;
+  --ink-2:#8592a6;
+  --ink-3:#596475;
+
+  --line:rgba(255,255,255,.07);
+  --line-2:rgba(255,255,255,.14);
+  --glass:rgba(255,255,255,.035);
+  --glass-2:rgba(255,255,255,.06);
+
+  --primary:#4c8dff;
+  --primary-2:#77aaff;
+  --primary-3:#2c6bd4;
+  --accent:#3ea3ff;
+  --glow:rgba(76,141,255,.45);
+
+  --ok:#22c55e;
+  --warn:#f5a524;
+  --danger:#ff6b6b;
+
+  /* 三类语义底色 */
+  --in-bg:rgba(76,141,255,.10);
+  --in-fg:#9cc4ff;
+  --in-line:rgba(76,141,255,.24);
+  --auto-bg:rgba(34,197,94,.09);
+  --auto-fg:#8fe0ac;
+  --auto-line:rgba(34,197,94,.22);
+  --sum-bg:rgba(245,165,36,.12);
+  --sum-fg:#ffcb7a;
+  --sum-line:rgba(245,165,36,.26);
+
+  --label-bg:#202836;
+  --label-fg:#dbe4f0;
+
+  --r-s:8px; --r-m:12px; --r-l:16px; --r-xl:20px;
+  --sh-1:0 1px 2px rgba(0,0,0,.35);
+  --sh-2:0 10px 30px -18px rgba(0,0,0,.9);
+  --sh-glow:0 14px 44px -22px rgba(76,141,255,.6);
+  --ease:cubic-bezier(.22,1,.36,1);
+  --ease-spring:cubic-bezier(.34,1.56,.64,1);
+
+  --hdr-h:104px;
+}
+
+html[data-theme="light"]{
+  --bg-0:#e9edf4;
+  --bg-1:#f4f7fb;
+  --bg-2:#ffffff;
+  --bg-3:#f1f4f9;
+  --ink-0:#141a24;
+  --ink-1:#333c4b;
+  --ink-2:#657287;
+  --ink-3:#96a1b2;
+
+  --line:rgba(15,23,38,.08);
+  --line-2:rgba(15,23,38,.16);
+  --glass:rgba(255,255,255,.72);
+  --glass-2:rgba(255,255,255,.9);
+
+  --primary:#2563eb;
+  --primary-2:#3b82f6;
+  --primary-3:#1d4ed8;
+  --accent:#2f6fd8;
+  --glow:rgba(37,99,235,.25);
+
+  --in-bg:#eaf2ff;
+  --in-fg:#1a54b8;
+  --in-line:#c2d8ff;
+  --auto-bg:#e8f8f1;
+  --auto-fg:#0b7a55;
+  --auto-line:#bbe7d4;
+  --sum-bg:#fff4e2;
+  --sum-fg:#a8620a;
+  --sum-line:#f2ddba;
+
+  --label-bg:#e6ebf4;
+  --label-fg:#2a3444;
+
+  --sh-1:0 1px 2px rgba(15,23,38,.07);
+  --sh-2:0 10px 30px -18px rgba(15,23,38,.3);
+  --sh-glow:0 14px 44px -22px rgba(37,99,235,.35);
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+
+/* 全屏细噪点：给所有渐变增加磨砂/胶片颗粒，消除塑料感 */
+body::after{
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:9997;
+  opacity:.038; mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.6'/%3E%3C/svg%3E");
+}
+body{
+  background:
+    radial-gradient(1200px 600px at 12% -10%, rgba(76,141,255,.10), transparent 60%),
+    radial-gradient(900px 500px at 92% 0%, rgba(139,92,246,.08), transparent 55%),
+    var(--bg-0);
+  color:var(--ink-0);
+  font-family:var(--font);
+  font-size:13.5px;
+  line-height:1.62;
+  font-feature-settings:"tnum" 1, "kern" 1;
+  text-rendering:optimizeLegibility;
+  min-height:100vh;
+  padding-bottom:60px;
+  -webkit-font-smoothing:antialiased;
+}
+html[data-theme="light"] body{
+  background:
+    radial-gradient(1200px 600px at 12% -10%, rgba(37,99,235,.08), transparent 60%),
+    radial-gradient(900px 500px at 92% 0%, rgba(139,92,246,.06), transparent 55%),
+    var(--bg-0);
+}
+
+/* ============ 顶栏 ============ */
+header{
+  position:sticky; top:0; z-index:50;
+  padding:0 20px 12px;
+  background:linear-gradient(180deg, rgba(11,14,19,.92), rgba(11,14,19,.72) 60%, transparent);
+  backdrop-filter:blur(14px) saturate(140%);
+  -webkit-backdrop-filter:blur(14px) saturate(140%);
+  border-bottom:1px solid var(--line);
+}
+html[data-theme="light"] header{
+  background:linear-gradient(180deg, rgba(244,247,251,.95), rgba(244,247,251,.75) 60%, transparent);
+}
+.hd-top{display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; padding:14px 0 0}
+header h1{
+  margin:0; font-size:19px; font-weight:800; letter-spacing:.06em;
+  background:linear-gradient(100deg,
+    #ffffff 0%, var(--primary-2) 26%, #a78bfa 42%,
+    #ffffff 56%, var(--primary-2) 72%, #a78bfa 100%);
+  background-size:240% 100%;
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  /* 每 9 秒一道极淡的反光扫过，呼应「镜面」意象 */
+  animation:h1Sheen 9s var(--ease) infinite;
+}
+@keyframes h1Sheen{
+  0%, 62%{background-position:120% 0}
+  100%{background-position:-120% 0}
+}
+html[data-theme="light"] header h1{
+  background:linear-gradient(120deg,#0f172a 10%, var(--primary) 60%, #7c3aed 100%);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+header .sub{font-size:11.5px; color:var(--ink-3); letter-spacing:.02em}
+header .sub #verTag{
+  display:inline-block; padding:1px 7px; border-radius:999px;
+  background:var(--glass-2); border:1px solid var(--line-2);
+  color:var(--primary-2); font-weight:700; margin-right:6px;
+}
+.hd-spacer{flex:1}
+
+.toolbar{display:flex; flex-wrap:wrap; gap:7px; align-items:center; padding:10px 0 0}
+.toolbar .tbgap{position:relative; margin-left:10px}
+.toolbar .tbgap::before{
+  content:""; position:absolute; left:-6px; top:50%; transform:translateY(-50%);
+  width:1px; height:16px; background:var(--line-2); border-radius:1px;
+}
+@media (max-width:820px){.toolbar .tbgap{margin-left:0}.toolbar .tbgap::before{display:none}}
+
+.toolbar input[type=text]{
+  height:30px; padding:0 10px; box-sizing:border-box;
+  border-radius:var(--r-s); border:1px solid var(--line-2);
+  background:var(--glass); color:var(--ink-0);
+  font-size:12.5px; font-family:inherit; text-align:left;
+  transition:border-color .18s var(--ease), background .18s var(--ease);
+}
+.toolbar input[type=text]:hover{border-color:rgba(255,255,255,.22)}
+.toolbar input[type=text]:focus{
+  outline:none; border-color:var(--primary);
+  background:var(--glass-2); box-shadow:0 0 0 3px var(--glow);
+}
+html[data-theme="light"] .toolbar input[type=text]:hover{border-color:rgba(15,23,38,.24)}
+.toolbar .skillpick{
+  flex:0 0 auto; width:92px; height:30px; padding:0 22px 0 8px;
+  border-radius:var(--r-s); border:1px solid var(--line-2);
+  background-color:var(--glass); color:var(--ink-1);
+  font-size:12.5px; font-family:inherit; text-align:center;
+}
+.toolbar .charname{flex:1 1 132px; min-width:104px}
+.toolbar .skillname{flex:1 1 132px; min-width:104px}
+
+/* ============ 按钮 ============ */
+button{
+  font-family:inherit; font-size:12.5px; font-weight:600;
+  height:30px; padding:0 12px;
+  border-radius:var(--r-s); border:1px solid var(--line-2);
+  background:var(--glass); color:var(--ink-1);
+  cursor:pointer; white-space:nowrap;
+  transition:transform .18s var(--ease), border-color .18s var(--ease),
+             background .18s var(--ease), color .18s var(--ease), box-shadow .18s var(--ease);
+}
+button:hover{
+  border-color:var(--primary); color:var(--primary-2);
+  background:var(--glass-2); transform:translateY(-1px);
+  box-shadow:0 6px 18px -10px var(--glow);
+}
+button:active{transform:translateY(0) scale(.985)}
+button:disabled{opacity:.4; cursor:not-allowed; transform:none; box-shadow:none}
+button:disabled:hover{border-color:var(--line-2); color:var(--ink-1); background:var(--glass)}
+
+button.primary{
+  background:linear-gradient(135deg, var(--primary-2), var(--primary-3));
+  border-color:transparent; color:#fff;
+  box-shadow:0 6px 18px -10px var(--glow);
+}
+button.primary:hover{color:#fff; filter:brightness(1.08)}
+button.warn{color:var(--danger); border-color:rgba(255,107,107,.35); background:rgba(255,107,107,.08)}
+button.warn:hover{color:#fff; background:rgba(255,107,107,.85); border-color:transparent}
+button.ghost{background:var(--glass); color:var(--ink-1)}
+button.ghost:hover{color:var(--primary-2)}
+button.tiny{height:26px; padding:0 10px; font-size:11.5px; border-radius:6px}
+
+/* ============ 主容器与卡片 ============ */
+main{padding:16px 20px 0; max-width:1760px; margin:0 auto}
+
+.card{
+  position:relative;
+  /* 半透明 + 背景模糊：形成毛玻璃，能隐约看到背后漂浮的碎片 */
+  background:linear-gradient(180deg, rgba(23,29,39,.70), rgba(17,22,30,.62));
+  backdrop-filter:blur(14px) saturate(135%);
+  -webkit-backdrop-filter:blur(14px) saturate(135%);
+  border:1px solid var(--line);
+  border-radius:var(--r-l);
+  margin-bottom:14px;
+  overflow:hidden;
+  /* 顶沿受光 / 底沿背光 / 投影，三层叠出玻璃厚度 */
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.07),
+    inset 0 -1px 0 rgba(0,0,0,.28),
+    0 1px 2px rgba(0,0,0,.35),
+    0 14px 34px -18px rgba(0,0,0,.9);
+  transition:border-color .3s var(--ease), box-shadow .3s var(--ease), transform .3s var(--ease);
+  animation:cardIn .62s var(--ease) both;
+  animation-delay:calc(var(--i, 0) * 55ms);
+}
+/* 次级卡片：更通透、更淡，让主战场（硬币/结果）更聚焦 */
+.card.card-subtle{
+  background:linear-gradient(180deg, rgba(23,29,39,.52), rgba(17,22,30,.46));
+}
+.card.card-subtle>h2{background:linear-gradient(90deg, rgba(76,141,255,.06), transparent 60%)}
+html[data-theme="light"] .card{
+  background:linear-gradient(180deg, rgba(255,255,255,.80), rgba(246,248,251,.72));
+  backdrop-filter:blur(14px) saturate(115%);
+  -webkit-backdrop-filter:blur(14px) saturate(115%);
+}
+/* 卡片内的装饰层：鼠标光晕 / 玻璃碎片 / 掠过光带 */
+.card>.glow{
+  position:absolute; inset:0; z-index:0; pointer-events:none; opacity:0;
+  background:radial-gradient(300px circle at var(--mx,50%) var(--my,0%),
+             rgba(76,141,255,.12), rgba(76,141,255,.02) 55%, transparent 72%);
+  transition:opacity .35s var(--ease);
+}
+.card:hover>.glow{opacity:1}
+.card>.cshards{position:absolute; inset:0; z-index:0; pointer-events:none; overflow:hidden; opacity:.55}
+.card>.cshards i{
+  position:absolute; display:block;
+  width:var(--w); height:var(--h);
+  background:linear-gradient(135deg, rgba(156,196,255,.42), rgba(76,141,255,.05));
+  clip-path:polygon(0 0,100% 20%,80% 100%,9% 76%);
+  opacity:0;
+  animation:cShard var(--dur) ease-in-out var(--dly) infinite;
+}
+@keyframes cShard{
+  0%,100%{opacity:0; transform:translateY(3px) rotate(0deg) scale(.9)}
+  22%{opacity:.8}
+  55%{opacity:.35; transform:translateY(-8px) rotate(var(--r)) scale(1)}
+  85%{opacity:.7}
+}
+/* 悬停时一道光带掠过 */
+/* 内容层压在装饰层之上 */
+.card>h2,.card>.body{position:relative; z-index:1}
+
+/* 悬停：边框提亮 + 轻微抬起，不做夸张位移 */
+.card:hover{
+  border-color:var(--line-2);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.11),
+    inset 0 -1px 0 rgba(0,0,0,.28),
+    0 0 0 1px rgba(76,141,255,.10),
+    0 22px 46px -20px rgba(0,0,0,.95);
+  /* 抬起 + 极轻微倾斜，像被轻轻碰了一下 */
+  transform:translateY(-3px) scale(1.004) rotate(-.15deg);
+  transition:transform .42s var(--ease-spring), border-color .3s var(--ease), box-shadow .3s var(--ease);
+}
+@keyframes numFlash{
+  0%{transform:scale(1)}
+  32%{transform:scale(1.055)}
+  100%{transform:scale(1)}
+}
+.numflash{animation:numFlash .42s var(--ease)}
+@keyframes cardIn{
+  from{opacity:0; transform:translateY(18px)}
+  to{opacity:1; transform:translateY(0)}
+}
+
+.card>h2{
+  margin:0; padding:10px 16px;
+  backdrop-filter:blur(6px);
+  font-size:13.5px; font-weight:700; letter-spacing:.04em;
+  color:var(--ink-0);
+  background:linear-gradient(90deg, rgba(76,141,255,.10), rgba(76,141,255,0) 60%);
+  border-bottom:1px solid var(--line);
+  display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap;
+}
+.card>h2 .ttl{white-space:nowrap}
+/* 折叠：点标题栏收起内容 */
+.card>h2{cursor:pointer; user-select:none}
+.card>h2::after{
+  content:"▾"; margin-left:8px; font-size:11px; color:var(--ink-3);
+  transition:transform .25s var(--ease); flex:0 0 auto;
+}
+.card.collapsed>h2::after{transform:rotate(-90deg)}
+.card.collapsed>.body{display:none}
+.card.collapsed>h2{border-bottom-color:transparent}
+/* 备注分两行时整体居中排在标题下方 */
+.card>h2 .hint-2line{flex-basis:100%; justify-content:center; text-align:center; line-height:1.35; font-size:10.5px}
+.card>h2::before{
+  content:""; width:3px; height:14px; border-radius:2px; margin-right:9px;
+  background:linear-gradient(180deg, var(--primary-2), var(--primary-3));
+  box-shadow:0 0 10px var(--glow);
+  flex:0 0 auto;
+}
+.card>h2 .hint{font-size:11.5px; font-weight:400; color:var(--ink-3); display:flex; align-items:center; gap:8px}
+.card .body{padding:14px 16px}
+
+/* ============ 工作区布局（2.0 新） ============ */
+.workspace{
+  display:grid;
+  grid-template-columns:296px minmax(0,1fr);
+  gap:14px;
+  align-items:start;
+  margin-bottom:14px;
+}
+.workspace .card{margin-bottom:0}
+.ws-right{display:flex; flex-direction:column; gap:14px; min-width:0}
+
+/* 左栏：技能参数，窄而长，单列排布 */
+.card-params .kv{grid-template-columns:minmax(0,1fr)}
+.card-params .kv .item{grid-template-columns:96px minmax(0,1fr)}
+.card-params .kv .item>label{font-size:11.5px; padding:0 4px}
+
+/* 右侧：全局设置压成扁条，多列横排 */
+.card-global .body{padding:10px 14px}
+.card-global fieldset{margin:0; padding:6px 10px 8px}
+.card-global fieldset+fieldset{margin-top:8px}
+.card-global .kv{grid-template-columns:repeat(auto-fit,minmax(196px,1fr)); gap:5px 10px}
+.card-global .kv .item{grid-template-columns:104px minmax(0,1fr)}
+.card-global .kv .item>label{font-size:11.5px}
+
+@media (max-width:1180px){
+  .workspace{grid-template-columns:minmax(0,1fr)}
+  .card-params .kv{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:680px){
+  .card-params .kv{grid-template-columns:minmax(0,1fr)}
+}
+
+/* ============ 字段网格 ============ */
+fieldset{border:1px solid var(--line); border-radius:var(--r-m); margin:0 0 10px; padding:8px 10px 10px; background:rgba(255,255,255,.012)}
+fieldset:last-child{margin-bottom:0}
+legend{
+  font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--ink-3); padding:0 6px;
+}
+
+.kv{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px 12px}
+.kv .item{display:grid; grid-template-columns:132px minmax(0,1fr); align-items:center; gap:8px}
+.kv .item[hidden]{display:none}
+.kv .item>label{
+  background:var(--label-bg); color:var(--label-fg);
+  padding:0 8px; border-radius:var(--r-s); height:28px; box-sizing:border-box;
+  display:flex; align-items:center; justify-content:center; text-align:center;
+  font-weight:600; font-size:12px; border:1px solid var(--line);
+  white-space:nowrap; overflow:hidden;
+}
+
+input[type=number],input[type=text],select{
+  font-family:var(--font); font-size:12.5px; padding:0 8px; height:28px; box-sizing:border-box;
+  border-radius:var(--r-s); border:1px solid var(--line-2);
+  background:var(--bg-3); color:var(--ink-0);
+  width:100%; min-width:0; text-align:center;
+  transition:border-color .16s var(--ease), box-shadow .16s var(--ease), background .16s var(--ease);
+}
+input[type=number]{text-align:center; -moz-appearance:textfield; appearance:textfield}
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none; margin:0}
+input:hover,select:hover{border-color:rgba(255,255,255,.22)}
+html[data-theme="light"] input:hover,html[data-theme="light"] select:hover{border-color:rgba(15,23,38,.24)}
+input:focus,select:focus{
+  outline:none; border-color:var(--primary);
+  background:var(--bg-2); box-shadow:0 0 0 3px var(--glow);
+  animation:focusRing .55s var(--ease);
+}
+/* 聚焦瞬间荡开一圈光环 */
+@keyframes focusRing{
+  0%{box-shadow:0 0 0 1px var(--glow)}
+  55%{box-shadow:0 0 0 7px rgba(76,141,255,.10)}
+  100%{box-shadow:0 0 0 3px var(--glow)}
+}
+input.man,select.man{background:var(--in-bg); color:var(--in-fg); border-color:var(--in-line); font-weight:600}
+input.man:focus,select.man:focus{box-shadow:0 0 0 3px rgba(76,141,255,.28)}
+
+/* 下拉：去掉原生外观，文字居中，自绘箭头 */
+select option{padding:6px 10px; text-align:center; text-align-last:center; font-size:12.5px; background:var(--bg-2); color:var(--ink-0)}
+select{
+  -webkit-appearance:none; -moz-appearance:none; appearance:none;
+  text-align:center; text-align-last:center;
+  background-repeat:no-repeat; background-position:right 8px center; background-size:9px 6px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M0 0h9L4.5 6z' fill='%238592a6'/%3E%3C/svg%3E");
+}
+
+/* 自动计算结果的展示格 */
+.out{
+  background:var(--auto-bg); border:1px solid var(--auto-line); border-radius:var(--r-s);
+  height:28px; padding:0 8px; width:100%; box-sizing:border-box;
+  display:flex; align-items:center; justify-content:center; text-align:center;
+  font-weight:700; color:var(--auto-fg); font-variant-numeric:tabular-nums;
+}
+.out.blank{color:var(--ink-3); font-weight:400}
+
+/* ============ 结果区 ============ */
+.resultbar{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; margin-bottom:12px}
+.bigres{
+  border-radius:var(--r-m); padding:14px 18px; text-align:center;
+  background:linear-gradient(160deg, var(--sum-bg), rgba(245,165,36,.04));
+  border:1px solid var(--sum-line);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
+}
+.bigres .t{font-size:11.5px; font-weight:700; color:var(--ink-2); letter-spacing:.06em}
+.bigres .v{
+  font-size:44px; font-weight:800; line-height:1.08;
+  letter-spacing:-.025em;
+  font-variant-numeric:tabular-nums;
+  background:linear-gradient(180deg, #ffffff 6%, var(--sum-fg) 92%);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  filter:drop-shadow(0 2px 18px rgba(245,165,36,.22));
+}
+html[data-theme="light"] .bigres .v{
+  background:linear-gradient(180deg, #b06a10 6%, #8a4f04 92%);
+  -webkit-background-clip:text; background-clip:text;
+}
+.bigres.alt{
+  background:linear-gradient(160deg, var(--auto-bg), rgba(34,197,94,.04));
+  border-color:var(--auto-line);
+}
+.bigres.alt .v{
+  background:linear-gradient(180deg, #ffffff 6%, var(--auto-fg) 92%);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  filter:drop-shadow(0 2px 18px rgba(34,197,94,.22));
+}
+html[data-theme="light"] .bigres.alt .v{
+  background:linear-gradient(180deg, #0d8a5f 6%, #06694a 92%);
+  -webkit-background-clip:text; background-clip:text;
+}
+
+.subres{display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px}
+@media (max-width:1240px){.subres{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media (max-width:700px){.subres{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.card-result .subres{grid-template-columns:repeat(4,minmax(0,1fr))}
+.card-loops .subres{margin-bottom:14px}
+.subres .box{
+  border:1px solid var(--line); border-radius:var(--r-m); background:var(--glass);
+  padding:8px 10px; text-align:center;
+  display:flex; flex-direction:column; justify-content:center; min-height:62px;
+  transition:border-color .2s var(--ease), background .2s var(--ease);
+}
+.subres .box:hover{border-color:var(--line-2); background:var(--glass-2)}
+.subres .box .t{font-size:11px; color:var(--ink-3); font-weight:600; letter-spacing:.02em}
+.subres .box .v{font-size:19px; font-weight:800; color:var(--ink-0); font-variant-numeric:tabular-nums}
+.subres .box.hl .v{color:var(--primary-2)}
+
+/* ============ 循环数据 ============ */
+.loops{display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:12px; margin-top:14px}
+.loopgrp{border:1px solid var(--line); border-radius:var(--r-m); overflow:hidden; background:var(--glass)}
+.loopgrp>h3{
+  margin:0; padding:8px 12px; font-size:12px; font-weight:700;
+  background:linear-gradient(90deg, rgba(76,141,255,.12), transparent);
+  color:var(--ink-1); border-bottom:1px solid var(--line);
+  display:flex; justify-content:center; align-items:center; gap:8px;
+}
+.loopgrp>h3 .s{font-size:15px; font-weight:800; color:var(--primary-2); font-variant-numeric:tabular-nums}
+.loopgrp .cells{display:flex; flex-direction:column; gap:8px; padding:10px}
+.looprow{display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:6px}
+.loopgrp .cells input{height:28px; padding:0 4px}
+.loopcell{display:flex; flex-direction:column; gap:3px; min-width:0}
+.loopcell .n{font-size:10px; color:var(--ink-3); text-align:center; line-height:1.2; white-space:nowrap}
+
+/* 拼点行：紫调区分，与伤害行一眼可分 */
+.clashrow input{
+  background:rgba(139,92,246,.09); border-color:rgba(139,92,246,.22); color:#b9a8ff;
+}
+.clashcell{position:relative; display:flex; min-width:0}
+.clashcell input{width:100%}
+.clashcell input:placeholder-shown{color:var(--ink-3)}
+/* × 按钮：把该回合标记为「不参与平均」 */
+.clashcell .skip{
+  position:absolute; right:2px; top:50%; transform:translateY(-50%);
+  width:15px; height:15px; padding:0; line-height:1;
+  border-radius:50%; border:none; background:rgba(255,255,255,.10);
+  color:var(--ink-3); font-size:11px; cursor:pointer; opacity:0;
+  transition:opacity .15s var(--ease), background .15s var(--ease), color .15s var(--ease);
+}
+.clashcell:hover .skip{opacity:1}
+.clashcell .skip:hover{background:rgba(255,107,107,.8); color:#fff}
+
+.loopbars{
+  display:grid; grid-template-columns:repeat(6,minmax(0,1fr));
+  gap:6px; height:42px; align-items:end; margin-top:2px;
+}
+.loopavg{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 12px 10px; font-size:11.5px; color:var(--ink-3);
+}
+.loopavg b{font-size:15px; font-weight:800; color:var(--primary-2); font-variant-numeric:tabular-nums}
+.loopbars i{
+  display:block; min-height:2px; border-radius:4px 4px 2px 2px;
+  background:linear-gradient(180deg, var(--primary-2), var(--primary-3));
+  opacity:.75; transition:height .35s var(--ease), opacity .2s var(--ease);
+}
+.loopbars i:hover{opacity:1}
+
+/* ============ 表格 ============ */
+table{border-collapse:separate; border-spacing:0; width:100%; font-size:12px}
+.tblwrap{overflow-x:auto; border-radius:var(--r-m); border:1px solid var(--line)}
+th,td{padding:0; border-bottom:1px solid var(--line); border-right:1px solid var(--line)}
+th:last-child,td:last-child{border-right:none}
+thead th{
+  background:var(--bg-3); color:var(--ink-1);
+  font-weight:700; padding:7px 4px; height:34px;
+  text-align:center; vertical-align:middle; font-size:11.5px;
+  position:sticky; top:0; z-index:2;
+  border-bottom:1px solid var(--line-2);
+}
+thead th small{display:block; font-weight:400; color:var(--ink-3); font-size:10px}
+tbody td{padding:0 4px; height:28px; text-align:center; vertical-align:middle}
+tbody tr{transition:background .16s var(--ease)}
+tbody tr:hover td{background:rgba(76,141,255,.05)}
+table#coinTable{table-layout:fixed; min-width:1020px}
+table#coinTable col:nth-child(1){width:76px}
+table#coinTable col:nth-child(2){width:80px}
+table#coinTable col:nth-child(3){width:92px}
+table#coinTable col:nth-child(4){width:88px}
+table#coinTable col:nth-child(5){width:92px}
+table#coinTable col:nth-child(6){width:92px}
+table#coinTable col:nth-child(7){width:104px}
+table#coinTable col:nth-child(8){width:80px}
+table#coinTable col:nth-child(9){width:72px}
+table#coinTable col:nth-child(10){width:80px}
+table#coinTable col:nth-child(11){width:88px}
+table#coinTable col:nth-child(12){width:92px}
+
+td.lab{
+  background:var(--label-bg); color:var(--label-fg);
+  font-weight:700; text-align:center; padding:0 4px;
+  white-space:nowrap; font-size:11.5px;
+}
+td.cell-in{background:var(--in-bg); padding:0}
+td.cell-in input,td.cell-in select{
+  border:none; border-radius:0; background-color:transparent; color:var(--in-fg);
+  font-weight:600; text-align:center; padding:0 6px; width:100%; height:27px; box-sizing:border-box;
+}
+td.cell-in select{padding:0}
+td.cell-in input:focus,td.cell-in select:focus{outline:2px solid var(--primary); outline-offset:-2px; box-shadow:none}
+td.cell-auto{
+  background:var(--auto-bg); color:var(--auto-fg);
+  font-weight:700; text-align:center; padding:0 6px; font-variant-numeric:tabular-nums;
+}
+td.cell-auto.blank{color:var(--ink-3); font-weight:400}
+tr.hide{display:none}
+tr.coinempty td{background:transparent; color:var(--ink-3); text-align:center; height:auto; font-size:12px; padding:0}
+.empty-state{padding:30px 16px 26px; text-align:center}
+.empty-shards{display:flex; justify-content:center; gap:12px; margin-bottom:14px}
+.empty-shards i{
+  display:block; width:24px; height:20px;
+  background:linear-gradient(135deg, rgba(156,196,255,.30), rgba(76,141,255,.05));
+  border:1px solid rgba(156,196,255,.14);
+  clip-path:polygon(0 0,100% 20%,80% 100%,9% 76%);
+  animation:emptyFloat 3.4s var(--ease) infinite;
+}
+.empty-shards i:nth-child(2){animation-delay:.45s; width:30px; height:25px}
+.empty-shards i:nth-child(3){animation-delay:.9s}
+@keyframes emptyFloat{
+  0%,100%{transform:translateY(0) rotate(0deg); opacity:.55}
+  50%{transform:translateY(-7px) rotate(9deg); opacity:.95}
+}
+.empty-title{font-size:13px; font-weight:700; color:var(--ink-1); letter-spacing:.04em}
+.empty-sub{font-size:11.5px; color:var(--ink-3); margin-top:5px}
+tr.sep td{background:var(--bg-3); padding:3px; border-bottom:1px solid var(--line)}
+
+tfoot td{
+  background:var(--label-bg); color:var(--label-fg); font-weight:800;
+  padding:0 6px; height:28px; text-align:center; font-variant-numeric:tabular-nums;
+  border-top:1px solid var(--line-2); border-bottom:none;
+}
+tfoot td.grand{background:var(--sum-bg); color:var(--sum-fg); font-size:14px}
+tfoot td.empty{background:transparent}
+
+table.detail{min-width:1500px}
+table.detail thead th{background:var(--bg-3); font-size:11px}
+table.detail td{padding:0 5px; height:28px; text-align:center; font-variant-numeric:tabular-nums; white-space:nowrap}
+table.detail tbody tr:nth-child(even) td{background:rgba(255,255,255,.02)}
+table.detail .loss{color:var(--warn)}
+table.detail .raw{color:var(--ink-3)}
+
+/* ============ 伤害构成 ============ */
+.composehead{
+  margin:16px 0 8px; font-size:12px; font-weight:700; color:var(--ink-1);
+  display:flex; align-items:center; gap:10px;
+}
+.composehead .hint{font-size:11px; font-weight:400; color:var(--ink-3)}
+.compose{display:flex; flex-direction:column; gap:6px}
+.crow{display:grid; grid-template-columns:78px minmax(0,1fr) 104px; align-items:center; gap:10px}
+.crow .cl{font-size:11.5px; font-weight:700; color:var(--primary-2); text-align:right; white-space:nowrap}
+.crow .cbar{display:flex; height:22px; border-radius:6px; overflow:hidden; background:var(--bg-3); border:1px solid var(--line)}
+.crow .cbar span{
+  display:flex; align-items:center; justify-content:center; overflow:hidden;
+  height:100%; transition:width .4s var(--ease);
+}
+.crow .cbar em{
+  font-style:normal; font-size:10px; font-weight:800;
+  color:rgba(255,255,255,.95); text-shadow:0 1px 2px rgba(0,0,0,.45);
+  white-space:nowrap; pointer-events:none;
+}
+.crow .cv{
+  display:flex; flex-direction:column; align-items:flex-end; justify-content:center;
+  line-height:1.2; font-variant-numeric:tabular-nums; color:var(--sum-fg);
+}
+.crow .cv b{font-size:12.5px; font-weight:800}
+.crow .cv .pct{font-size:10.5px; font-weight:700; color:var(--ink-3)}
+.crow .cv .parts{font-size:9.5px; color:var(--ink-3); font-variant-numeric:tabular-nums; white-space:nowrap}
+.crow.zero .cbar{background:var(--bg-2)}
+.seg-base{background:linear-gradient(180deg, #5b9bd5, #3b7bb5)}
+.seg-extra{background:linear-gradient(180deg, #e8a33d, #c9821d)}
+.seg-fixed{background:linear-gradient(180deg, #4fae72, #2f8a52)}
+.clegend{display:flex; flex-wrap:wrap; gap:16px; font-size:11px; color:var(--ink-3); margin-top:10px; align-items:center}
+.clegend i{display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:-2px; margin-right:5px}
+
+.legend{display:flex; flex-wrap:wrap; gap:16px; font-size:11px; color:var(--ink-3); margin-top:12px; align-items:center}
+.legend i{display:inline-block; width:13px; height:13px; border-radius:3px; vertical-align:-2px; margin-right:5px; border:1px solid var(--line-2)}
+
+/* ============ 参数扫描 ============ */
+.sweepbar{display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-bottom:12px}
+.sweepbar label{font-size:12px; font-weight:600; color:var(--ink-2); display:flex; align-items:center; gap:6px}
+.sweepbar input[type=number]{width:96px}
+.sweepbar select{width:auto; min-width:170px}
+.sweepnote{font-size:11.5px; color:var(--ink-2); margin-top:10px; line-height:1.8}
+.sweepnote b{color:var(--primary-2)}
+.sweepchart{background:var(--bg-1); border:1px solid var(--line); border-radius:var(--r-m); padding:10px}
+.sweepchart svg{display:block; width:100%; height:auto}
+.sweeptbl{max-height:270px; overflow:auto; margin-top:12px; border-radius:var(--r-s)}
+.sweeptbl table{font-size:12px}
+.sweepmark{color:var(--sum-fg); font-weight:800}
+.sweepflat{color:var(--warn); font-weight:700}
+tr.sweepmax td{background:rgba(245,165,36,.08)}
+
+details.sweepresult{border:1px solid var(--line); border-radius:var(--r-m); background:var(--glass); overflow:hidden}
+details.sweepresult summary{
+  cursor:pointer; padding:9px 12px; font-weight:700; font-size:12px; color:var(--ink-1);
+  background:var(--glass); user-select:none; list-style:none;
+  display:flex; align-items:center; gap:8px;
+}
+details.sweepresult summary::-webkit-details-marker{display:none}
+details.sweepresult summary::before{content:"▸"; display:inline-block; transition:transform .2s var(--ease)}
+details.sweepresult[open] summary::before{transform:rotate(90deg)}
+details.sweepresult summary:hover{background:var(--glass-2)}
+details.sweepresult summary .hint{font-size:11px; font-weight:400; color:var(--ink-3)}
+details.sweepresult>div{padding:10px 12px}
+details.sweepresult>.sweeptbl{padding:0 12px 12px}
+
+/* ============ 公式代入 ============ */
+details.fsub{border:1px solid var(--line); border-radius:var(--r-m); background:var(--glass); overflow:hidden; margin-top:12px}
+details.fsub summary{
+  cursor:pointer; padding:9px 12px; font-weight:700; font-size:12px; color:var(--ink-1);
+  background:var(--glass); user-select:none; list-style:none;
+  display:flex; align-items:center; gap:8px;
+}
+details.fsub summary::-webkit-details-marker{display:none}
+details.fsub summary::before{content:"▸"; display:inline-block; transition:transform .2s var(--ease)}
+details.fsub[open] summary::before{transform:rotate(90deg)}
+details.fsub summary:hover{background:var(--glass-2)}
+details.fsub .fbody{padding:10px 12px 14px}
+.fcoin{border-left:2px solid var(--primary); background:var(--bg-1); border-radius:0 var(--r-s) var(--r-s) 0; padding:9px 12px; margin-bottom:9px}
+.fcoin .ft{font-weight:800; font-size:12px; color:var(--primary-2); margin-bottom:5px}
+.fcoin .fl{font-family:var(--mono); font-size:11.5px; color:var(--ink-1); word-break:break-all; line-height:1.8}
+.fcoin .fl b{color:var(--sum-fg); font-weight:700}
+
+/* ============ 说明文档 ============ */
+.doc{font-size:12.5px; line-height:1.9; color:var(--ink-1)}
+.doc h3{
+  font-size:12.5px; color:var(--primary-2); margin:20px 0 8px; padding-bottom:6px;
+  border-bottom:1px solid var(--line); font-weight:700; letter-spacing:.02em;
+}
+.doc h3:first-child{margin-top:0}
+.doc ol,.doc ul{margin:6px 0 10px; padding-left:22px}
+.doc li{margin-bottom:4px}
+.doc p{margin:8px 0}
+.doc code{
+  background:var(--bg-3); border:1px solid var(--line); border-radius:4px;
+  padding:1px 5px; font-size:11.5px; color:var(--sum-fg); font-family:var(--mono);
+}
+.doc .frm{
+  background:var(--bg-1); border:1px solid var(--line); border-radius:var(--r-s);
+  padding:10px 13px; margin:8px 0; font-family:var(--mono); font-size:11.5px;
+  color:var(--ink-1); white-space:pre-wrap; word-break:break-all; line-height:1.75;
+}
+.doc .frm b{color:var(--sum-fg); font-weight:700}
+.doc .note{background:rgba(245,165,36,.07); border-left:2px solid var(--warn); padding:9px 13px; border-radius:0 var(--r-s) var(--r-s) 0; margin:10px 0; color:var(--ink-1)}
+.doc .swatch{
+  display:inline-block; padding:1px 9px; border-radius:4px;
+  font-weight:700; font-size:11.5px; border:1px solid transparent;
+}
+.doc .sw-in{background:var(--in-bg); color:var(--in-fg); border-color:var(--in-line)}
+.doc .sw-auto{background:var(--auto-bg); color:var(--auto-fg); border-color:var(--auto-line)}
+.doc .sw-sum{background:var(--sum-bg); color:var(--sum-fg); border-color:var(--sum-line)}
+.doc .tip{background:rgba(34,197,94,.07); border-left:2px solid var(--ok); padding:9px 13px; border-radius:0 var(--r-s) var(--r-s) 0; margin:10px 0; color:var(--ink-1)}
+.doc .tip b{color:var(--auto-fg)}
+.doc table.term{border-collapse:separate; border-spacing:0; width:100%; margin:10px 0; font-size:12px; border:1px solid var(--line); border-radius:var(--r-s); overflow:hidden}
+.doc table.term th{background:var(--bg-3); color:var(--ink-1); border-bottom:1px solid var(--line-2); padding:7px 10px; text-align:center; font-weight:700; position:static}
+.doc table.term td{border-bottom:1px solid var(--line); border-right:1px solid var(--line); padding:7px 10px; text-align:center; height:auto; vertical-align:middle}
+.doc table.term tr:last-child td{border-bottom:none}
+.doc table.term td:last-child{border-right:none; text-align:left}
+.doc table.term td:first-child{font-weight:700; color:var(--ink-0); white-space:nowrap}
+.doc details{border:1px solid var(--line); border-radius:var(--r-m); margin:10px 0; background:var(--glass); overflow:hidden}
+.doc details[open]{background:var(--bg-1)}
+.doc summary{
+  cursor:pointer; padding:9px 12px; font-weight:700; color:var(--ink-1);
+  font-size:12px; background:var(--glass); user-select:none; list-style:none;
+  display:flex; align-items:center; gap:8px;
+}
+.doc summary::-webkit-details-marker{display:none}
+.doc summary::before{content:"▸"; display:inline-block; transition:transform .2s var(--ease); color:var(--ink-3)}
+.doc details[open] summary::before{transform:rotate(90deg)}
+.doc summary:hover{background:var(--glass-2)}
+.doc details .dbody{padding:6px 14px 14px}
+
+/* ============ 存档抽屉 ============ */
+#drawerMask{position:fixed; top:var(--hd-h, 0px); left:0; right:0; bottom:0; background:rgba(5,8,12,.55); backdrop-filter:blur(3px); z-index:90; opacity:0; pointer-events:none; transition:opacity .24s var(--ease)}
+#drawerMask.on{opacity:1; pointer-events:auto}
+#archDrawer{
+  position:fixed; top:var(--hd-h, 0px); right:0; bottom:0; width:min(600px,94vw); z-index:95;
+  background:linear-gradient(180deg, var(--bg-2), var(--bg-1));
+  border-left:1px solid var(--line-2);
+  box-shadow:-24px 0 60px -20px rgba(0,0,0,.8);
+  display:flex; flex-direction:column;
+  transform:translateX(103%);
+  transition:transform .32s var(--ease), visibility 0s linear .32s;
+  visibility:hidden;
+}
+#archDrawer.on{transform:none; visibility:visible; transition:transform .32s var(--ease), visibility 0s}
+#archDrawer .dhead{
+  display:flex; align-items:center; gap:10px; padding:14px 18px;
+  background:linear-gradient(90deg, rgba(76,141,255,.12), transparent);
+  border-bottom:1px solid var(--line); color:var(--ink-0);
+  font-weight:800; font-size:14px; letter-spacing:.04em;
+}
+#archDrawer .dcount{font-size:11.5px; font-weight:400; color:var(--ink-3)}
+#archDrawer .dclose{
+  margin-left:auto; background:transparent; border:none; color:var(--ink-2);
+  font-size:22px; line-height:1; cursor:pointer; padding:0 4px; height:auto;
+  transition:color .18s var(--ease), transform .18s var(--ease);
+}
+#archDrawer .dclose:hover{color:var(--ink-0); transform:rotate(90deg); background:transparent; box-shadow:none}
+#archDrawer .dbar{
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  padding:12px 18px; border-bottom:1px solid var(--line); background:var(--glass);
+}
+.dbar .searchwrap{position:relative; flex:1 1 180px; min-width:140px}
+.dbar .searchwrap input{width:100%; padding-left:30px; box-sizing:border-box}
+.dbar .searchwrap::before{
+  content:""; position:absolute; left:10px; top:50%; transform:translateY(-50%);
+  width:13px; height:13px; pointer-events:none; opacity:.55;
+  background:no-repeat center/13px url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2388a4c8' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='M15.5 15.5 21 21'/%3E%3C/svg%3E");
+}
+#archDrawer .dbar input[type=text]{flex:1; text-align:left}
+#archDrawer .dbar select{width:auto; min-width:130px}
+#archDrawer .dselbar{
+  display:flex; align-items:center; gap:12px; padding:8px 18px;
+  border-bottom:1px solid var(--line); background:var(--glass);
+  font-size:11.5px; color:var(--ink-3);
+}
+#archDrawer .dselbar label{display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:700; color:var(--ink-1); margin:0}
+#archDrawer .dselbar input[type=checkbox]{width:14px; height:14px; margin:0; cursor:pointer; accent-color:var(--primary)}
+#archDrawer .dselbar button{margin-left:auto}
+#archDrawer .dscroll{
+  flex:1; overflow-y:auto; overflow-x:hidden; padding:14px 18px;
+  position:relative; z-index:1;
+  overscroll-behavior:contain;      /* 滚到底时不把滚动传给页面 */
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:thin;
+  scrollbar-color:rgba(255,255,255,.18) transparent;
+}
+#archDrawer .dscroll::-webkit-scrollbar{width:8px}
+#archDrawer .dscroll::-webkit-scrollbar-track{background:transparent}
+#archDrawer .dscroll::-webkit-scrollbar-thumb{
+  background:rgba(255,255,255,.16); border-radius:4px;
+}
+#archDrawer .dscroll::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.28)}
+#archDrawer .dshards{position:absolute; inset:0; pointer-events:none; overflow:hidden; z-index:0; opacity:.5}
+#archDrawer .dshards i{
+  position:absolute; display:block;
+  width:var(--w); height:var(--h);
+  background:linear-gradient(135deg, rgba(156,196,255,.4), rgba(76,141,255,.05));
+  clip-path:polygon(0 0,100% 20%,80% 100%,9% 76%);
+  opacity:0;
+  animation:cShard var(--dur) ease-in-out var(--dly) infinite;
+}
+#archDrawer .dhead,#archDrawer .dbar,#archDrawer .dselbar,#archDrawer .dfoot{position:relative; z-index:1}
+#archDrawer .dfoot{
+  display:flex; align-items:center; gap:8px; padding:10px 18px;
+  border-top:1px solid var(--line); background:var(--glass);
+  font-size:11px; color:var(--ink-3);
+}
+
+.archlist{display:flex; flex-direction:column; gap:10px}
+.arch{
+  border:1px solid var(--line); border-radius:var(--r-m); padding:12px 14px;
+  display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center;
+  background:var(--glass);
+  transition:border-color .2s var(--ease), background .2s var(--ease), transform .2s var(--ease);
+}
+.arch:hover{border-color:var(--primary); background:var(--glass-2); transform:translateY(-1px)}
+.arch .pick{display:flex; align-items:center; flex:0 0 auto; padding-right:2px; cursor:pointer}
+.arch .pick input[type=checkbox]{width:16px; height:16px; margin:0; cursor:pointer; accent-color:var(--primary)}
+.arch .nm{font-weight:800; font-size:13.5px; color:var(--ink-0)}
+.arch .meta{font-size:11.5px; color:var(--ink-3); margin-top:2px}
+.arch .nums{display:flex; gap:12px; flex-wrap:wrap; font-size:11.5px; color:var(--ink-2)}
+.arch .nums b{font-size:14px; color:var(--sum-fg); font-variant-numeric:tabular-nums; font-weight:800}
+.arch .nums b.loop-num{color:var(--auto-fg)}
+.dim{color:var(--ink-3)}
+.arch .acts{margin-left:auto; display:flex; gap:6px; flex-wrap:wrap}
+.arch .note{
+  flex-basis:100%; font-size:11.5px; color:var(--ink-2);
+  background:var(--bg-1); border-left:2px solid var(--primary);
+  padding:6px 10px; border-radius:0 var(--r-s) var(--r-s) 0;
+}
+/* 仅用于档案列表的空状态提示；加 div 限定，避免影响表格里的空单元格 */
+div.empty{color:var(--ink-3); font-size:12px; padding:36px 16px; text-align:center; background:var(--glass); border-radius:var(--r-m); border:1px dashed var(--line-2)}
+
+/* ============ 弹窗 ============ */
+#overlay{
+  position:fixed; inset:0; background:rgba(5,8,12,.6); backdrop-filter:blur(4px);
+  z-index:100; display:none; align-items:center; justify-content:center; padding:20px;
+}
+#overlay.on{display:flex}
+.modal{
+  background:linear-gradient(180deg, var(--bg-2), var(--bg-1));
+  border:1px solid var(--line-2); border-radius:var(--r-l);
+  width:100%; max-width:480px;
+  box-shadow:0 24px 70px -24px rgba(0,0,0,.9);
+  overflow:hidden;
+  animation:modalIn .28s var(--ease-spring) both;
+}
+@keyframes modalIn{from{opacity:0; transform:scale(.96) translateY(8px)} to{opacity:1; transform:none}}
+.modal h3{
+  margin:0; padding:14px 18px; font-size:14px; font-weight:800; letter-spacing:.03em;
+  background:linear-gradient(90deg, rgba(76,141,255,.14), transparent);
+  border-bottom:1px solid var(--line); color:var(--ink-0);
+}
+.modal .mb{padding:18px}
+.modal .mb label{display:block; font-size:11.5px; font-weight:700; margin-bottom:6px; color:var(--ink-2)}
+.modal .mb input,.modal .mb textarea{
+  width:100%; padding:9px 11px; border:1px solid var(--line-2); border-radius:var(--r-s);
+  font-family:inherit; font-size:13px; margin-bottom:14px;
+  background:var(--bg-3); color:var(--ink-0);
+}
+.modal .mb input:focus,.modal .mb textarea:focus{outline:none; border-color:var(--primary); box-shadow:0 0 0 3px var(--glow)}
+.modal .mb textarea{resize:vertical; min-height:70px}
+.modal .mb label.chk{display:flex; align-items:center; gap:8px; font-size:12px; color:var(--ink-2); font-weight:400; margin-bottom:0; cursor:pointer}
+.modal .mb label.chk input[type=checkbox]{width:auto; margin:0; flex:0 0 auto; accent-color:var(--primary)}
+.modal .mf{padding:0 18px 18px; display:flex; gap:10px; justify-content:flex-end}
+
+/* ============ 提示条 ============ */
+/* ===== 右侧锚点导航 ===== */
+#anchorNav{
+  position:fixed; right:16px; top:50%; transform:translateY(-50%);
+  z-index:40; display:flex; flex-direction:column; gap:11px;
+  padding:10px 8px; border-radius:999px;
+  background:rgba(20,26,36,.45); border:1px solid var(--line);
+  backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+}
+#anchorNav a{
+  display:block; width:7px; height:7px; border-radius:50%;
+  background:rgba(255,255,255,.20);
+  transition:transform .22s var(--ease), background .22s var(--ease), box-shadow .22s var(--ease);
+}
+#anchorNav a:hover{background:var(--primary-2); transform:scale(1.5)}
+#anchorNav a.on{
+  background:var(--primary-2); transform:scale(1.35);
+  box-shadow:0 0 10px var(--glow);
+}
+@media (max-width:1100px){#anchorNav{display:none}}
+
+#toast{
+  position:fixed; left:50%; bottom:32px; transform:translateX(-50%) translateY(16px);
+  background:var(--bg-3); color:var(--ink-0);
+  border:1px solid var(--line-2); border-radius:999px;
+  padding:10px 22px; font-size:12.5px; font-weight:600;
+  opacity:0; pointer-events:none; transition:.26s var(--ease); z-index:200;
+  box-shadow:0 12px 36px -14px rgba(0,0,0,.9);
+  max-width:80vw; text-align:center;
+}
+#toast.on{opacity:1; transform:translateX(-50%) translateY(0)}
+#toast.err{background:rgba(255,107,107,.92); color:#fff; border-color:transparent}
+#toast.ok{background:rgba(34,197,94,.92); color:#fff; border-color:transparent}
+
+#storeWarn{
+  display:none; margin:0 20px 12px;
+  background:rgba(245,165,36,.1); border:1px solid rgba(245,165,36,.3);
+  color:var(--sum-fg); padding:10px 14px; border-radius:var(--r-m); font-size:12px;
+}
+#storeWarn.on{display:block}
+
+#archSearch{height:28px; box-sizing:border-box; text-align:left}
+.kbd{
+  background:var(--bg-3); border:1px solid var(--line-2); border-bottom-width:2px;
+  border-radius:4px; padding:0 6px; font-size:11px; font-family:var(--mono); color:var(--ink-1);
+}
+
+/* ============ 开场动画 ============ */
+#boot{
+  position:fixed; inset:0; z-index:999;
+  display:none; align-items:center; justify-content:center; cursor:pointer;
+  background:radial-gradient(circle at 50% 45%, #141a24 0%, #070a0e 70%);
+  overflow:hidden;
+}
+#boot.on{display:flex}
+/* 浅色模式的开场：亮底 + 深色字，避免白屏后突然切黑 */
+html[data-theme="light"] #boot{
+  background:radial-gradient(circle at 50% 45%, #f4f8ff 0%, #dbe5f3 72%);
+}
+html[data-theme="light"] .boot-title span{
+  background:linear-gradient(135deg, #101a2b 0%, #2b5fa8 48%, #4c86d6 100%);
+  -webkit-background-clip:text; background-clip:text;
+  filter:drop-shadow(0 0 22px rgba(76,141,255,.22));
+}
+html[data-theme="light"] .boot-sub{color:#5878a4}
+html[data-theme="light"] .boot-line{
+  background:linear-gradient(90deg, transparent, #4c8dff, transparent);
+}
+html[data-theme="light"] .boot-glass{
+  border-color:rgba(76,141,255,.24);
+  background:linear-gradient(135deg, rgba(255,255,255,.62), rgba(214,232,255,.28));
+  box-shadow:0 0 70px rgba(76,141,255,.14), inset 0 0 44px rgba(255,255,255,.6);
+}
+html[data-theme="light"] .shard{
+  background:linear-gradient(135deg, rgba(76,141,255,.5), rgba(140,185,255,.15));
+  filter:drop-shadow(0 0 6px rgba(76,141,255,.3));
+}
+#boot.hide{animation:bootOut .7s var(--ease) forwards; pointer-events:none}
+@keyframes bootOut{
+  0%{opacity:1; transform:scale(1)}
+  100%{opacity:0; transform:scale(1.08)}
+}
+.boot-wrap{position:relative; z-index:2; text-align:center}
+.boot-title{
+  display:flex; gap:.14em; justify-content:center;
+  font-size:64px; font-weight:900; letter-spacing:.08em;
+  font-family:var(--font);
+}
+.boot-title span{
+  display:inline-block;
+  background:linear-gradient(135deg, #ffffff 0%, #9cc4ff 45%, #6f8dff 100%);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  opacity:0;
+  animation:chFlick .9s var(--ease) forwards;
+  filter:drop-shadow(0 0 24px rgba(76,141,255,.55));
+}
+.boot-title span:nth-child(1){animation-delay:.10s}
+.boot-title span:nth-child(2){animation-delay:.24s}
+.boot-title span:nth-child(3){animation-delay:.38s}
+.boot-title span:nth-child(4){animation-delay:.52s}
+@keyframes chFlick{
+  0%{opacity:0; transform:translateY(14px) scale(.9); filter:blur(6px) drop-shadow(0 0 0 transparent)}
+  35%{opacity:1; transform:translateY(0) scale(1.04); filter:blur(0) drop-shadow(0 0 30px rgba(76,141,255,.9))}
+  45%{opacity:.35}
+  55%{opacity:1}
+  70%{opacity:.6}
+  100%{opacity:1; transform:translateY(0) scale(1); filter:blur(0) drop-shadow(0 0 24px rgba(76,141,255,.5))}
+}
+.boot-sub{
+  margin-top:14px; font-size:12px; letter-spacing:.42em; color:#7fa6d8;
+  opacity:0; animation:bootSub .8s var(--ease) .95s forwards;
+}
+@keyframes bootSub{from{opacity:0; letter-spacing:.7em} to{opacity:1; letter-spacing:.42em}}
+.boot-line{
+  width:0; height:1px; margin:22px auto 0;
+  background:linear-gradient(90deg, transparent, #4c8dff, transparent);
+  animation:bootLine 1s var(--ease) 1.05s forwards;
+}
+@keyframes bootLine{to{width:280px}}
+
+/* 镜面碎片 */
+.shards{position:absolute; inset:0; z-index:1; pointer-events:none}
+.shard{
+  position:absolute; left:50%; top:50%;
+  width:var(--w); height:var(--h);
+  background:linear-gradient(135deg, rgba(156,196,255,.85), rgba(76,141,255,.25));
+  clip-path:polygon(0 0, 100% 22%, 78% 100%, 12% 74%);
+  opacity:0;
+  animation:shardFly 1.15s cubic-bezier(.2,.7,.3,1) forwards;
+  animation-delay:var(--d);
+  filter:drop-shadow(0 0 8px rgba(76,141,255,.7));
+}
+@keyframes shardFly{
+  0%{opacity:0; transform:translate(-50%,-50%) rotate(0deg) scale(.2)}
+  12%{opacity:1}
+  100%{
+    opacity:0;
+    transform:translate(calc(-50% + var(--x)), calc(-50% + var(--y))) rotate(var(--r)) scale(var(--s));
+  }
+}
+
+/* 开场：45° 玻璃从一点生长 */
+.boot-wrap{position:relative}
+.boot-glass{
+  position:absolute; left:50%; top:50%;
+  width:min(340px, 78vw); height:min(340px, 78vw);
+  margin-left:calc(min(340px, 78vw) / -2);
+  margin-top:calc(min(340px, 78vw) / -2);
+  border:1px solid rgba(156,196,255,.30);
+  background:linear-gradient(135deg, rgba(156,196,255,.08), rgba(76,141,255,.015));
+  box-shadow:0 0 70px rgba(76,141,255,.20), inset 0 0 50px rgba(156,196,255,.06);
+  transform:rotate(-10deg) scale(0);
+  opacity:0;
+  animation:glassForm 1.1s var(--ease) .04s forwards;
+  pointer-events:none;
+}
+@keyframes glassForm{
+  0%{transform:rotate(-10deg) scale(0); opacity:0}
+  50%{opacity:1}
+  100%{transform:rotate(45deg) scale(1); opacity:1}
+}
+.boot-title{position:relative; z-index:3}
+.boot-sub,.boot-line{position:relative; z-index:3}
+
+/* 表头碎片 */
+.hd-shards{position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:0}
+.hd-shards i{
+  position:absolute; display:block;
+  width:var(--w); height:var(--h);
+  background:linear-gradient(135deg, rgba(156,196,255,.55), rgba(76,141,255,.08));
+  clip-path:polygon(0 0,100% 18%,80% 100%,8% 76%);
+  opacity:0;
+  animation:hdShard var(--dur) ease-in-out var(--dly) infinite;
+}
+@keyframes hdShard{
+  0%,100%{opacity:0; transform:translateY(2px) rotate(0deg) scale(.9)}
+  18%{opacity:.85}
+  50%{opacity:.45; transform:translateY(-7px) rotate(var(--r)) scale(1)}
+  82%{opacity:.8}
+}
+header h1,header .sub,.hd-top,.toolbar{position:relative; z-index:1}
+
+/* 背景漂浮碎片（视差） */
+.bg-layer{position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden}
+
+/* 丁达尔光柱：几束斜向的柔光，缓慢摆动 */
+.tyndall{
+  position:absolute; inset:-12% -22%;
+  background:
+    linear-gradient(101deg, transparent 34%, rgba(120,180,255,.055) 41%, transparent 47%),
+    linear-gradient(95deg,  transparent 52%, rgba(150,205,255,.042) 59%, transparent 65%),
+    linear-gradient(108deg, transparent 66%, rgba(120,180,255,.038) 73%, transparent 79%),
+    linear-gradient(112deg, transparent 80%, rgba(160,210,255,.03) 86%, transparent 91%);
+  filter:blur(16px);
+  animation:tyndallSway 22s ease-in-out infinite alternate;
+}
+@keyframes tyndallSway{
+  from{transform:translateX(-2.5%) scaleY(1)}
+  to{transform:translateX(2.5%) scaleY(1.06)}
+}
+
+/* 上浮气泡 */
+.bubbles,.sparks,.bg-shard-host{position:absolute; inset:0}
+.bubble{
+  position:absolute; bottom:-60px; display:block;
+  width:var(--w); height:var(--w); border-radius:50%;
+  background:radial-gradient(circle at 32% 28%, rgba(205,232,255,.55), rgba(120,180,255,.10) 62%, transparent 72%);
+  border:1px solid rgba(160,210,255,.14);
+  opacity:0;
+  animation:bubbleRise var(--dur) linear var(--dly) infinite;
+}
+@keyframes bubbleRise{
+  0%{opacity:0; transform:translateY(0) scale(.55)}
+  12%{opacity:.75}
+  78%{opacity:.45}
+  100%{opacity:0; transform:translateY(-112vh) scale(1.15)}
+}
+
+/* 闪光点 */
+.spark{
+  position:absolute; display:block;
+  width:var(--s); height:var(--s); border-radius:50%;
+  background:radial-gradient(circle, rgba(255,255,255,.95), rgba(160,210,255,.4) 45%, transparent 72%);
+  opacity:0;
+  animation:sparkTwinkle var(--dur) ease-in-out var(--dly) infinite;
+}
+@keyframes sparkTwinkle{
+  0%,100%{opacity:0; transform:scale(.4)}
+  50%{opacity:.85; transform:scale(1)}
+}
+.bg-shard-wrap{position:absolute; will-change:transform}
+.bg-shard{
+  display:block; width:var(--w); height:var(--h);
+  background:linear-gradient(135deg, rgba(156,196,255,.17), rgba(76,141,255,.03));
+  border:1px solid rgba(156,196,255,.15);
+  clip-path:polygon(0 0,100% 22%,78% 100%,12% 74%);
+  animation:bgFloat var(--fd) ease-in-out infinite alternate;
+}
+@keyframes bgFloat{
+  from{transform:translateY(0) rotate(0deg)}
+  to{transform:translateY(-22px) rotate(7deg)}
+}
+@media (max-width:760px){.bg-layer{display:none}}
+main{position:relative; z-index:1}
+
+/* 工具栏里的开场动画开关 */
+.tool-switch{display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--ink-3); cursor:pointer; user-select:none}
+.tool-switch input{width:14px; height:14px; margin:0; accent-color:var(--primary); cursor:pointer}
+
+/* 降低动效偏好 */
+@media (prefers-reduced-motion: reduce){
+  *{animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important}
+}
+
+
+/* ===== 循环模式胶囊 ===== */
+.loopmode{
+  display:flex; align-items:center; gap:6px; flex:0 0 auto;
+  height:30px; padding:0 10px; border-radius:999px;
+  background:linear-gradient(135deg, rgba(76,141,255,.16), rgba(139,92,246,.14));
+  border:1px solid rgba(76,141,255,.35);
+  box-shadow:0 0 0 1px rgba(76,141,255,.06), 0 4px 16px -8px rgba(76,141,255,.5);
+  transition:border-color .2s var(--ease), box-shadow .2s var(--ease);
+}
+.loopmode.active{
+  border-color:var(--primary-2);
+  box-shadow:0 0 0 2px rgba(76,141,255,.14), 0 6px 22px -10px rgba(76,141,255,.7);
+}
+.loopmode .lm-on{display:flex; align-items:center; gap:5px; cursor:pointer; font-size:12px; font-weight:700; color:var(--ink-1); white-space:nowrap}
+.loopmode .lm-on input{width:13px; height:13px; margin:0; accent-color:var(--primary)}
+.loopmode select{
+  width:auto; height:22px; padding:0 20px 0 8px; font-size:11.5px;
+  border-radius:999px; background-color:rgba(255,255,255,.07);
+  border-color:rgba(255,255,255,.14);
+}
+.loopmode .lm-tx{
+  min-width:34px; text-align:center; font-size:13px; font-weight:900;
+  color:var(--primary-2); letter-spacing:.04em; font-variant-numeric:tabular-nums;
+}
+.loopmode .lm-next{
+  height:22px; padding:0 11px; font-size:11.5px; font-weight:800;
+  border-radius:999px; border:none; color:#fff;
+  background:linear-gradient(135deg, var(--primary-2), var(--primary-3));
+  box-shadow:0 4px 14px -6px var(--glow);
+}
+.loopmode .lm-next:hover:not(:disabled){transform:translateY(-1px); filter:brightness(1.08)}
+.loopmode .lm-next:disabled{opacity:.35; box-shadow:none}
+@media (max-width:900px){.loopmode .lm-on span{display:none}}
+
+/* ===== 存档分组 ===== */
+.archgroup{margin-bottom:12px}
+.archgroup .ghead{
+  display:flex; align-items:center; gap:8px; cursor:pointer;
+  padding:6px 8px; border-radius:8px; user-select:none;
+  background:rgba(255,255,255,.03); border:1px solid var(--line);
+}
+.archgroup .ghead:hover{background:rgba(255,255,255,.06)}
+.archgroup .gcaret{font-size:10px; color:var(--ink-3); transition:transform .2s var(--ease)}
+.archgroup .ghead.closed .gcaret{transform:rotate(-90deg)}
+.archgroup .gname{font-size:12px; font-weight:800; color:var(--ink-1)}
+.archgroup .gcount{
+  font-size:10.5px; color:var(--ink-3); background:rgba(255,255,255,.07);
+  padding:0 7px; border-radius:999px;
+}
+.archgroup .gacts{margin-left:auto; display:flex; gap:6px}
+.archgroup .gbody{display:flex; flex-direction:column; gap:8px; padding:8px 0 0}
+
+.arch .grip{
+  cursor:grab; color:var(--ink-3); font-size:13px; letter-spacing:-2px;
+  padding:0 2px; user-select:none; opacity:.5;
+}
+.arch .grip:active{cursor:grabbing}
+.arch.dragging{opacity:.4; border-color:var(--primary)}
+.arch.drop-before{border-top:2px solid var(--primary-2)}
+
+/* 循环折线：叠在柱状图上，看清一轮内的走向 */
+.loopbars{position:relative}
+.loopline{
+  position:absolute; inset:0; width:100%; height:100%;
+  pointer-events:none; overflow:visible;
+}
+.loopline polyline{
+  fill:none; stroke:var(--primary-2); stroke-width:1.6;
+  stroke-linejoin:round; stroke-linecap:round; opacity:.85;
+  vector-effect:non-scaling-stroke;
+}
+/* 拼点留空 = 不参与平均，用虚线 + 破折号提示 */
+.clashrow input:placeholder-shown{border-style:dashed; opacity:.85}
+.clashrow input::placeholder{color:var(--ink-3); opacity:.9}
+
+/* 循环存档：左侧一道青色标记，和技能存档区分 */
+.arch.arch-loop{
+  border-left:3px solid rgba(56,189,248,.65);
+  background:linear-gradient(90deg, rgba(56,189,248,.06), transparent 40%);
+}
+.arch.arch-loop .nm{color:#7dd3fc}
+.loopmode .lm-prev,.loopmode .lm-save{
+  height:22px; padding:0 9px; font-size:11.5px; font-weight:700;
+  border-radius:999px; border:1px solid rgba(255,255,255,.16);
+  background:rgba(255,255,255,.06); color:var(--ink-1);
+}
+.loopmode .lm-prev:hover:not(:disabled),.loopmode .lm-save:hover:not(:disabled){
+  background:rgba(255,255,255,.12); border-color:var(--primary-2);
+}
+.loopmode .lm-prev:disabled,.loopmode .lm-save:disabled{opacity:.3}
+
+.archgroup .ggrip{
+  cursor:grab; color:var(--ink-3); font-size:12px; letter-spacing:-2px;
+  opacity:.45; user-select:none;
+}
+.archgroup .ggrip:active{cursor:grabbing}
+.archgroup .ghead.dragging{opacity:.45}
+.archgroup.drop-target .ghead{
+  border-color:var(--primary-2);
+  box-shadow:0 0 0 2px rgba(76,141,255,.18);
+}
+#archSort{
+  height:28px; border-radius:8px; font-size:11.5px;
+  background-color:rgba(255,255,255,.06); border:1px solid var(--line-2);
+  color:var(--ink-1); padding:0 8px;
+}
+
+/* 多级文件夹：子级用左侧竖线串起来 */
+.archgroup .gbody{
+  display:flex; flex-direction:column; gap:8px;
+  padding:6px 0 0 0;
+  border-left:1px dashed rgba(255,255,255,.10);
+  margin-left:9px;
+}
+.archgroup .gitems{display:flex; flex-direction:column; gap:8px; padding:6px 0 2px}
+</style>
+</head>
+<body>
+
+<div class="bg-layer" id="bgLayer" aria-hidden="true">
+  <div class="tyndall"></div>
+  <div class="bubbles" id="bgBubbles"></div>
+  <div class="sparks" id="bgSparks"></div>
+  <div class="bg-shard-host" id="bgShardHost"></div>
+</div>
+
+<div id="boot">
+  <div class="shards" id="bootShards"></div>
+  <div class="boot-wrap">
+    <div class="boot-glass"></div>
+    <div class="boot-title"><span>镜</span><span>息</span><span>演</span><span>算</span></div>
+    <div class="boot-sub">MIRROR · BREATH · CALCULUS</div>
+    <div class="boot-line"></div>
+  </div>
+</div>
+
+<header>
+  <div class="hd-shards" id="hdShards" aria-hidden="true"></div>
+  <h1>镜息演算 <span style="font-size:13px;font-weight:400;opacity:.85">· 边狱巴士技能伤害计算器</span></h1>
+  <div class="sub"><span id="verTag" style="font-weight:700">v3.2</span> · 单文件离线版 · 所有计算在本机完成，数据不会上传</div>
+  <div class="toolbar">
+    <input type="text" class="charname" id="charName" data-bind="character" placeholder="人格（如：堂吉诃德 脑叶公司E.G.O:: 以爱与憎之名）" title="填写人格全名，例如：堂吉诃德 脑叶公司E.G.O:: 以爱与憎之名">
+    <select id="skillPick" class="skillpick" title="选择技能类型，或选「自定义」自行输入">
+      <option value="">自定义</option>
+      <option value="一技能">一技能</option>
+      <option value="二技能">二技能</option>
+      <option value="三技能">三技能</option>
+      <option value="反击">反击</option>
+      <option value="强化一">强化一</option>
+      <option value="强化二">强化二</option>
+      <option value="强化三">强化三</option>
+    </select>
+    <input type="text" class="skillname" id="skillName" data-bind="skillName" placeholder="技能名称（如：阿卡纳律动！！/小阿卡纳光破斩！！！）" title="填写技能名，例如：阿卡纳律动！！/小阿卡纳光破斩！！！">
+    <div class="loopmode" id="loopModeBar">
+      <label class="lm-on" title="开启后可用「下一T」逐回合记录">
+        <input type="checkbox" id="loopModeOn"><span>循环模式</span>
+      </label>
+      <select id="loopTarget" title="记录到哪一组循环">
+        <option value="loop3">极限</option>
+        <option value="loop1">第一</option>
+        <option value="loop2">第二</option>
+      </select>
+      <span class="lm-tx" id="loopTx">T1</span>
+      <button class="lm-prev" id="btnPrevT" disabled title="回到上一回合">←</button>
+      <button class="lm-next" id="btnNextT" disabled>下一T →</button>
+      <button class="lm-save" id="btnLoopSave" disabled title="把当前 18 个循环数值存为循环存档（覆盖同文件夹的旧循环存档）">存循环</button>
+    </div>
+    <button class="ghost tbgap" id="btnUndo" title="撤销上一步改动（Ctrl+Z）">↶ 撤销</button>
+    <button class="ghost" id="btnRedo" title="重做（Ctrl+Y 或 Ctrl+Shift+Z）">↷ 重做</button>
+    <button class="ghost tbgap" id="btnQuickSave" title="以「技能名+时间」自动命名快速存档">⚡ 快速存档</button>
+    <button class="ghost primary" id="btnSave" title="把当前全部输入与结果存为档案（Ctrl+S）">💾 存档</button>
+    <button class="ghost" id="btnOpenArch" title="打开存档管理（读档 / 对比 / 批量删除）">📁 档案</button>
+    <button class="ghost tbgap" id="btnCsv" title="把当前逐硬币结果导出为 CSV，可用表格软件打开">⇩ CSV</button>
+    <button class="ghost" id="btnExport">⇩ 备份</button>
+    <button class="ghost" id="btnImport">⇧ 导入</button>
+    <button class="ghost tbgap" id="btnResetCoins" title="把技能参数、硬币参数、全局设置恢复为初始值（人格名、技能名与循环数据保留）">⟲ 重置参数</button>
+    <button class="ghost" id="btnResetAll" title="清空全部输入，回到初始空白状态">⟲ 全部复原</button>
+    <button class="ghost tbgap" id="btnTheme" title="切换深色 / 浅色模式">☀️ 浅色</button>
+    <label class="tool-switch" title="下次打开时是否播放开场动画"><input type="checkbox" id="bootToggle"> 开场动画</label>
+    <input type="file" id="fileImport" accept=".json,application/json" style="display:none">
+  </div>
+</header>
+
+<div id="storeWarn">⚠ 当前浏览器禁用了本地存储（localStorage），存档与自动保存不可用。请改用「导出备份」保存 JSON 文件。</div>
+
+<main>
+
+  <div class="workspace">
+    <!-- 技能参数 -->
+    <div class="card card-params">
+      <h2><span class="ttl">「技能参数」</span><span class="hint hint-2line">浅蓝=手动输入<br>浅绿=自动计算</span></h2>
+      <div class="body">
+        <fieldset>
+          <legend>基础参数</legend>
+          <div class="kv">
+            <div class="item"><label>硬币数量</label><input type="number" class="man" id="coinCount" data-bind="coinCount" min="0" max="9" step="1" value="0"></div>
+            <div class="item"><label>基础威力</label><input type="number" class="man" data-bind="basePower" step="any" value="0"></div>
+            <div class="item"><label>硬币威力</label><input type="number" class="man" data-bind="coinPower" step="any" value="0"></div>
+            <div class="item"><label>攻击容量</label><input type="number" class="man" data-bind="capacity" step="any" value="0"></div>
+            <div class="item"><label>攻击等级</label><input type="number" class="man" data-bind="atkLevel" step="any" value="0"></div>
+            <div class="item"><label class="wide">是否为不可拼点反击</label><select class="man" data-bind="counter"><option>否</option><option>是</option></select></div>
+            <div class="item" id="joinClashRow"><label class="wide">是否参与拼点</label><select class="man" data-bind="joinClash"><option>是</option><option>否</option></select></div>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>威力参数</legend>
+          <div class="kv">
+            <div class="item"><label class="wide">终础威力加成</label><input type="number" class="man" data-bind="baseBonus" step="any" value="0"></div>
+            <div class="item"><label class="wide">硬币威力加成</label><input type="number" class="man" data-bind="coinBonus" step="any" value="0"></div>
+            <div class="item"><label class="wide">拼点威力加成</label><input type="number" class="man" data-bind="clashBonus" step="any" value="0"></div>
+            <div class="item"><label>威力总值</label><div class="out" id="o-powerTotal">0</div></div>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>攻等参数</legend>
+          <div class="kv">
+            <div class="item"><label class="wide">攻击等级加成</label><input type="number" class="man" data-bind="atkLevelBonus" step="any" value="0"></div>
+            <div class="item"><label>敌方等级</label><input type="number" class="man" data-bind="enemyLevel" step="any" value="0"></div>
+            <div class="item"><label class="wide">攻/防等级差值</label><div class="out" id="o-levelDiff">0</div></div>
+            <div class="item"><label class="wide">最终基础威力</label><div class="out" id="o-finalBase">0</div></div>
+            <div class="item"><label class="wide">最终硬币威力</label><div class="out" id="o-finalCoin">0</div></div>
+          </div>
+        </fieldset>
+      </div>
+    </div>
+
+    <div class="ws-right">
+    <!-- 全局设置 -->
+    <div class="card card-global">
+      <h2>「全局设置」<span class="hint">对全部硬币生效</span></h2>
+      <div class="body">
+        <fieldset>
+          <legend>暴击与重投</legend>
+          <div class="kv">
+            <div class="item"><label>必定暴击</label><select class="man" data-bind="crit"><option>否</option><option>是</option></select></div>
+            <div class="item"><label>是否重投</label><select class="man" data-bind="reroll"><option>否</option><option>是</option></select></div>
+            <div class="item"><label>重投次数</label><input type="number" class="man" data-bind="rerollCount" min="0" max="9" step="1" value="0"></div>
+            <div class="item"><label class="wide">重投是否参与拼点</label><select class="man" data-bind="rerollClash"><option>否</option><option>是</option></select></div>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>技能乘区</legend>
+          <div class="kv">
+            <div class="item"><label class="wide">技能第一乘区</label><input type="number" class="man" data-bind="z1" step="any" value="0"></div>
+            <div class="item"><label class="wide">技能第二乘区</label><input type="number" class="man" data-bind="z2" step="any" value="0"></div>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>等级差修正（自动）</legend>
+          <div class="kv">
+            <div class="item"><label class="wide">等级差修正值</label><div class="out" id="o-levelMod">0</div></div>
+            <div class="item"><label class="wide">暴击部分取值</label><div class="out" id="o-critPart">0</div></div>
+          </div>
+          <div style="font-size:11.5px;color:var(--muted);margin-top:6px">
+            等级差修正 = 等级差 ÷ (|等级差| + 25)，并入单币第一乘区后四舍五入保留 2 位。分母取绝对值，结果恒落在 −1 到 1 之间。<br>
+            必定暴击=是 时暴击部分恒为 0.2；否则每枚硬币暴击部分 = MIN(呼吸法强度 × 5% × 0.2, 0.2)。
+          </div>
+        </fieldset>
+      </div>
+    </div>
+  <!-- 硬币参数 -->
+  <div class="card card-coins">
+    <h2>「硬币参数 · 详细参数」<span class="hint">硬币1–9 + 重投1–9，未启用的行自动隐藏</span></h2>
+    <div class="body">
+      <div class="tblwrap">
+        <table id="coinTable">
+          <colgroup>
+            <col><col><col><col>
+            <col><col><col><col>
+            <col><col><col><col>
+          </colgroup>
+          <thead>
+            <tr>
+              <th>硬币编号</th>
+              <th>呼吸法强度<small>输入</small></th>
+              <th>单币第一乘区<small>自动</small></th>
+              <th>单币第二乘区<small>输入</small></th>
+              <th>单币硬币威力<small>输入</small></th>
+              <th>终币特殊威力<small>输入</small></th>
+              <th>不计算追伤伤害<small>自动</small></th>
+              <th>固定追伤<small>输入</small></th>
+              <th>是否追伤<small>输入</small></th>
+              <th>追伤系数<small>输入</small></th>
+              <th>追伤数值<small>自动</small></th>
+              <th>伤害数值<small>自动</small></th>
+            </tr>
+          </thead>
+          <tbody id="coinBody"></tbody>
+          <tfoot>
+            <tr>
+              <td>合计</td>
+              <td class="empty"></td><td class="empty"></td><td class="empty"></td>
+              <td class="empty"></td><td class="empty"></td>
+              <td id="f-sumJ">0</td><td id="f-sumK">0</td><td class="empty"></td><td class="empty"></td>
+              <td id="f-sumN">0</td><td class="grand" id="f-sumO">0</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <div class="composehead">「伤害构成」<span class="hint">每枚硬币各占本技能总伤害的多少，条长即占比</span></div>
+      <div class="compose" id="composeChart"></div>
+      <div class="clegend">
+        <span><i class="seg-base"></i>基础伤害</span>
+        <span><i class="seg-extra"></i>追伤</span>
+        <span><i class="seg-fixed"></i>固定追伤（已乘攻击容量）</span>
+      </div>
+    </div>
+  </div>
+
+    </div>
+  </div>
+
+  <!-- 计算结果 -->
+  <div class="card card-result">
+    <h2>「计算结果」<span class="hint">随输入实时更新
+    </span></h2>
+    <div class="body">
+      <div class="resultbar">
+        <div class="bigres alt">
+          <div class="t">拼点点数</div>
+          <div class="v" id="o-clash">0</div>
+        </div>
+        <div class="bigres">
+          <div class="t">总伤害（全部硬币+重投）</div>
+          <div class="v" id="o-total">0</div>
+        </div>
+      </div>
+      <div class="subres">
+        <div class="box"><div class="t">启用硬币数</div><div class="v" id="o-activeCoins">0</div></div>
+        <div class="box"><div class="t">不计算追伤伤害 合计</div><div class="v" id="o-sumJ">0</div></div>
+        <div class="box"><div class="t">追伤数值 合计</div><div class="v" id="o-sumN">0</div></div>
+        <div class="box"><div class="t">固定追伤 合计（原值）</div><div class="v" id="o-sumK">0</div></div>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--in)"></i>手动输入</span>
+        <span><i style="background:var(--auto)"></i>自动计算</span>
+        <span><i style="background:var(--sum)"></i>汇总结果</span>
+        <span style="margin-left:auto">循环数据为手动录入区：把每一轮实测/预期伤害填入，右侧自动求和。</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 循环数据 -->
+  <div class="card card-loops">
+    <h2>「循环数据」<span class="hint">手动录入 · 每回合的伤害与拼点</span></h2>
+    <div class="body">
+      <div class="subres">
+        <div class="box hl"><div class="t">第一循环 · 启动轮</div><div class="v" id="o-loop1">0</div></div>
+        <div class="box hl"><div class="t">第二循环 · 启动后</div><div class="v" id="o-loop2">0</div></div>
+        <div class="box hl"><div class="t">两轮循环总和</div><div class="v" id="o-loop12">0</div></div>
+        <div class="box hl"><div class="t">极限循环 · 上限</div><div class="v" id="o-loop3">0</div></div>
+      </div>
+      <div class="loops">
+        <div class="loopgrp">
+          <h3>「第一循环 · 启动轮」<span class="s" id="o-loop1b">0</span></h3>
+          <div class="cells" id="loop1cells"></div>
+          <div class="loopavg"><span>平均拼点</span><b id="o-avg1">0</b></div>
+        </div>
+        <div class="loopgrp">
+          <h3>「第二循环 · 启动后」<span class="s" id="o-loop2b">0</span></h3>
+          <div class="cells" id="loop2cells"></div>
+          <div class="loopavg"><span>平均拼点</span><b id="o-avg2">0</b></div>
+        </div>
+        <div class="loopgrp">
+          <h3>「极限循环 · 理论上限」<span class="s" id="o-loop3b">0</span></h3>
+          <div class="cells" id="loop3cells"></div>
+          <div class="loopavg"><span>平均拼点</span><b id="o-avg3">0</b></div>
+        </div>
+      </div>
+      <div class="legend">
+        <span style="margin-left:auto">上排填伤害、下排填拼点；拼点留空或点 × 表示该回合不参与平均。</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 参数扫描 -->
+  <div class="card card-subtle">
+    <h2>「参数扫描」<span class="hint">让一个参数在区间内变化，看总伤害怎么走</span></h2>
+    <div class="body">
+      <div class="sweepbar">
+        <label>扫描参数
+          <select id="sweepParam" class="man">
+            <option value="breath">呼吸法强度（全部硬币）</option>
+            <option value="enemyLevel">敌方等级</option>
+            <option value="atkLevel">攻击等级</option>
+            <option value="basePower">基础威力</option>
+            <option value="coinPower">硬币威力</option>
+            <option value="baseBonus">终础威力加成</option>
+            <option value="coinBonus">硬币威力加成</option>
+            <option value="clashBonus">拼点威力加成</option>
+            <option value="capacity">攻击容量</option>
+            <option value="z1">技能第一乘区</option>
+            <option value="z2">技能第二乘区</option>
+            <option value="coinCount">硬币数量</option>
+          </select>
+        </label>
+        <label>从 <input type="number" id="sweepFrom" value="0" step="any"></label>
+        <label>到 <input type="number" id="sweepTo" value="20" step="any"></label>
+        <label>步长 <input type="number" id="sweepStep" value="1" step="any"></label>
+        <button class="primary" id="btnSweep">开始扫描</button>
+        <button id="btnSweepReset">恢复默认区间</button>
+      </div>
+      <details class="sweepresult" id="sweepResult" open>
+        <summary>扫描结果<span class="hint">点标题可收起 / 展开</span></summary>
+        <div class="sweepchart" id="sweepChart"><div style="color:var(--muted);font-size:12px;padding:18px;text-align:center">设置区间后点「开始扫描」。结果只做推演，不会改动你填的数值。</div></div>
+        <div class="sweeptbl" id="sweepTable"></div>
+        <div class="sweepnote" id="sweepNote"></div>
+      </details>
+    </div>
+  </div>
+
+  <!-- 计算过程 -->
+  <div class="card">
+    <h2>「逐硬币计算过程」<span class="hint">定位取整误差用：看「取整前伤害」与「取整损失」两列</span></h2>
+    <div class="body">
+      <div class="tblwrap">
+        <table class="detail">
+          <thead>
+            <tr>
+              <th>行</th><th>状态</th><th>威力序号 N</th><th>暴击率</th><th>暴击部分</th>
+              <th>技能一乘区</th><th>等级差修正</th><th>乘区1(原值)</th><th>乘区1(ROUND2)</th>
+              <th>1+技能一乘区+乘区1</th><th>1+技能二乘区+乘区2</th>
+              <th>Σ单币硬币威力</th><th>Σ终币特殊威力</th><th>威力基数</th>
+              <th>乘区积</th><th>×攻击容量</th><th>取整前伤害</th><th>取整损失</th>
+              <th>不计算追伤伤害</th><th>追伤取整前</th><th>追伤数值</th>
+              <th>固定追伤×容量</th><th>伤害数值</th>
+            </tr>
+          </thead>
+          <tbody id="detailBody"></tbody>
+        </table>
+      </div>
+      <details class="fsub" style="margin-top:10px">
+        <summary>展开：把当前数字代进公式（逐硬币算式）</summary>
+        <div class="fbody" id="formulaBody"></div>
+      </details>
+      <div style="font-size:11.5px;color:var(--muted);margin-top:8px">
+        「取整损失」= 取整前伤害 − 向下取整后的值。若某枚硬币的结果看起来差了 1 点，通常就是这一列的浮点尾数造成的，对照「取整前伤害」即可判断。<br>
+        未启用的行不显示，也不参与任何累计（威力、追伤、固定追伤都不计入）。
+      </div>
+    </div>
+  </div>
+
+  <!-- 存档抽屉 -->
+  <div id="drawerMask"></div>
+  <aside id="archDrawer" aria-hidden="true">
+    <div class="dshards" id="drawerShards" aria-hidden="true"></div>
+    <div class="dhead">
+      <span>存档管理</span>
+      <span id="archCount" class="dcount">共 0 个档案</span>
+      <button class="dclose" id="btnDrawerClose" title="关闭（Esc）">×</button>
+    </div>
+    <div class="dbar">
+      <span class="searchwrap"><input type="text" id="archSearch" placeholder="搜索名称 / 备注 / 人格 / 技能 / 文件夹…"></span>
+        <select id="archSort" title="排序方式">
+          <option value="time">时间（新→旧）</option>
+          <option value="timeAsc">时间（旧→新）</option>
+          <option value="total">总伤害（高→低）</option>
+          <option value="clash">拼点（高→低）</option>
+        </select>
+      <select id="archFilter"><option value="">全部人格</option></select>
+    </div>
+    <div class="dselbar">
+      <label><input type="checkbox" id="archSelAll"> 全选</label>
+      <span id="archSelCount">已选 0 个</span>
+      <button class="tiny" id="btnCompareSel" disabled>对比选中</button>
+      <button class="tiny warn" id="btnDelSelected" disabled>删除选中</button>
+    </div>
+    <div class="dscroll">
+      <div class="archlist" id="archList"></div>
+    </div>
+    <div class="dfoot">
+      <button class="tiny" id="btnDiag" title="检查本机存储是否可用">存储自检</button>
+      <button class="tiny" id="btnResetSkip" title="让「全部复原 / 复原硬币明细 / 删除档案」重新弹出确认">恢复提醒</button>
+      <span style="margin-left:auto">档案存在本机浏览器，不会上传</span>
+    </div>
+  </aside>
+
+  <!-- 说明 -->
+  <div class="card card-subtle">
+    <h2>「使用说明」<span class="hint">三步上手 · 结果怎么来的 · 取整规则</span></h2>
+    <div class="body doc">
+
+      <h3>一、三步上手</h3>
+      <p style="color:var(--muted)">镜息演算 —— 把一枚硬币的威力、乘区、追伤拆开算清楚，再放回整套循环里看收益。</p>
+      <ol>
+        <li><b>填技能参数</b> —— 硬币数量、基础威力、硬币威力、攻击容量、攻击等级，照技能描述直接抄。</li>
+        <li><b>填硬币明细</b> —— 有几枚硬币就填几行：呼吸法强度、单币第二乘区、单币硬币威力、终币特殊威力（没有就留 0）。</li>
+        <li><b>读结果</b> —— 顶部「计算结果」实时刷新；想核对过程就展开下面「逐硬币计算过程」。</li>
+      </ol>
+      <div class="note">
+        <span class="swatch sw-in">浅蓝</span> 是你填的，
+        <span class="swatch sw-auto">浅绿</span> 是自动算的，
+        <span class="swatch sw-sum">浅橙</span> 是汇总结果。
+        改动任意一格，全部结果立即重算。
+      </div>
+
+      <h3>二、循环数据：怎么衡量一个人格</h3>
+      <p>循环数据是手动录入区，用来记录<b>一整套技能（6 回合 / 6 次技能）的总伤害</b>。三条循环分别对应实战中的三个阶段：</p>
+      <table class="term">
+        <tr><th style="width:112px">循环</th><th style="width:96px">阶段</th><th>用来衡量什么</th></tr>
+        <tr>
+          <td>第一循环</td><td>启动轮</td>
+          <td>关卡开始的前 6 回合。反映人格的<b>启动速度</b>与前期实力 —— 需要攒充能、叠层数才能发力的技能，这一轮会明显偏低。</td>
+        </tr>
+        <tr>
+          <td>第二循环</td><td>启动后</td>
+          <td>启动完成后再打一轮 6 回合。大部分人格式此进入常态输出，<b>最能代表实战水平</b>。</td>
+        </tr>
+        <tr>
+          <td>极限循环</td><td>理论上限</td>
+          <td>吃满全部加成时的一轮总伤。实战几乎不可能达成，仅作上限参考。</td>
+        </tr>
+      </table>
+      <div class="tip">
+        <b>两轮循环总和 = 第一循环 + 第二循环</b>，是横向对比人格整轮收益最实用的一个数：它把「启动慢」和「上限高」两件事合在一起看。
+      </div>
+
+      <h3>三、各版块填什么</h3>
+      <table class="term">
+        <tr><th style="width:150px">版块</th><th>说明</th></tr>
+        <tr><td>技能参数</td><td>技能本身的固有数值。其中「最终基础威力」「最终硬币威力」「威力总值」是自动算出的。</td></tr>
+        <tr><td>全局设置</td><td>对本技能所有硬币生效的开关：必定暴击、是否重投、技能第一/第二乘区。</td></tr>
+        <tr><td>硬币参数</td><td>逐枚硬币的数值。硬币 1–9 对应技能的多段攻击，重投 1–9 对应重投产生的额外段。</td></tr>
+        <tr><td>逐硬币计算过程</td><td>把每枚硬币的中间量全部摊开，用来定位「差 1 点伤害是哪一步造成的」。</td></tr>
+      </table>
+      <div class="note">
+        <b>未启用的行会自动隐藏</b>：「硬币数量」决定启用前几枚硬币；「是否重投 = 是」+「重投次数」决定启用前几行重投。
+      </div>
+
+      <h3>四、结果是怎么算出来的</h3>
+      <p>下面把每一步写清楚。<b>所有名称都与界面上的标签一致</b>，你可以对着输入框逐项验算。</p>
+      <p style="color:var(--muted);font-size:11.5px">点开下面每一项即可查看对应的算式与说明。</p>
+
+      <details>
+        <summary>基础数值</summary>
+        <div class="dbody">
+          <div class="frm"><b>攻/防等级差值</b> = 攻击等级 + 攻击等级加成 − 敌方等级
+
+<b>最终基础威力</b> = 向下取整( 基础威力 + 终础威力加成 + 反击加成 )
+               反击加成 = 不可拼点反击 = 是 ? 攻/防等级差值 ÷ 3 : 0
+
+<b>最终硬币威力</b> = 硬币威力 + 硬币威力加成
+<b>威力总值</b>     = 基础威力 + 终础威力加成 + 最终硬币威力 × 硬币数量</div>
+        </div>
+      </details>
+
+      <details>
+        <summary>乘区（暴击与等级差都在这里）</summary>
+        <div class="dbody">
+          <div class="frm"><b>暴击部分</b> = 必定暴击 = 是 ? 0.2 : MIN( 呼吸法强度 × 5% × 0.2, 0.2 )
+
+<b>等级差修正</b> = 攻/防等级差值 ÷ ( |攻/防等级差值| + 25 )
+               分母取绝对值，结果恒落在 −1 到 1 之间
+
+<b>单币第一乘区</b> = 四舍五入2位( 暴击部分 + 技能第一乘区 + 等级差修正 )</div>
+          <div class="tip">
+            <b>呼吸法强度 20 层即封顶</b>：暴击部分最高只有 0.2，此时再叠呼吸法不再提升伤害。<br>
+            <b>必定暴击 = 是</b> 时暴击部分恒为 0.2，呼吸法强度完全失效。
+          </div>
+        </div>
+      </details>
+
+      <details>
+        <summary>单枚硬币的伤害</summary>
+        <div class="dbody">
+          <div class="frm"><b>不计算追伤伤害</b> = 向下取整( ( 最终基础威力 + 最终硬币威力 × N
+                            + 截至本行Σ单币硬币威力 + 截至本行Σ终币特殊威力 )
+                          × ( 1 + 技能第一乘区 + 单币第一乘区 )
+                          × ( 1 + 技能第二乘区 + 单币第二乘区 )
+                          × 攻击容量 )
+
+<b>追伤数值</b> = 是否追伤 = 是 ? 向下取整( 不计算追伤伤害 × 追伤系数 ) : 0
+
+<b>伤害数值</b> = 向下取整( 不计算追伤伤害 + 追伤数值 + 固定追伤 × 攻击容量 )</div>
+          <div class="tip">
+            <b>「不计算追伤伤害」最低为 1</b>：边狱巴士的技能除非明确写了「不造成伤害」，否则至少会打出 1 点。
+            因此这一项以 1 为下限取整。
+          </div>
+          <div class="note">
+            <b>N 是这枚硬币在技能中的序号</b>：硬币行 N = 1…9；重投行 N = 硬币数量 + 重投序号。<br>
+            「截至本行Σ」是从第 1 行累加到当前行为止（含当前行）。<br>
+            <b>注意固定追伤要乘攻击容量</b>，而追伤数值不乘。
+          </div>
+        </div>
+      </details>
+
+      <details>
+        <summary>总伤害与拼点点数</summary>
+        <div class="dbody">
+          <div class="frm"><b>总伤害</b> = Σ伤害数值（全部已启用的硬币与重投）
+
+<b>拼点点数</b> = 不可拼点反击 = 是 ? 0 : 向下取整(
+                基础威力 + 终础威力加成 + 最终硬币威力 × 硬币数量
+              + 攻/防等级差值 ÷ 3 + 拼点威力加成
+              + ( 重投参与拼点 = 是 ? 最终硬币威力 × 重投次数 : 0 )
+              + Σ单币硬币威力( 已启用的硬币行 )
+              + ( 重投参与拼点 = 是 ? Σ单币硬币威力( 已启用的重投行 ) : 0 ) )</div>
+          <div class="note">
+            拼点点数<b>只累加「单币硬币威力」，不含「终币特殊威力」</b>。<br>
+            <b>重投行的单币硬币威力只有在「重投参与拼点 = 是」时才计入</b>；否则重投只影响伤害，不影响拼点。<br>
+            另外它用的是<b>原始的「基础威力 + 终础威力加成」</b>，而不是已经取整过的「最终基础威力」—— 这是它和伤害公式的一处细微差别。
+          </div>
+        </div>
+      </details>
+
+      <h3>五、参数扫描</h3>
+      <p>想知道「呼吸法叠到多少层才封顶」「敌方等级差 5 级会掉多少伤害」，不用一个个手改 —— 选好参数和区间，点「开始扫描」即可。</p>
+      <ul>
+        <li>扫描会在当前配置的基础上<b>逐点重算</b>，结果只是推演，<b>不会改动你填的任何数值</b>。</li>
+        <li>曲线上的红点是最佳取值；表格里「持平」表示这一步相比上一步没有变化。</li>
+        <li>下方会自动给出结论，例如「呼吸法超过 20 之后伤害不再增长」。</li>
+      </ul>
+      <div class="tip">
+        「呼吸法强度」会同时作用于全部硬币；「硬币数量」会自动取整并按 0–9 截断。
+      </div>
+
+      <h3>六、取整规则</h3>
+      <ul>
+        <li><b>乘区</b>：只有「单币第一乘区」会四舍五入保留 2 位小数；技能第一/第二乘区、单币第二乘区、呼吸法强度都按你填的原值参与计算，不再取整。</li>
+        <li><b>伤害</b>：一律向下取整（例如 23.9 记为 23）。</li>
+        <li><b>顺序</b>：先算乘区并取整 → 再相乘 → 最后对伤害向下取整；追伤数值单独向下取整一次。</li>
+      </ul>
+      <div class="tip">
+        边狱巴士最小的加成单位是 1%，而第二乘区由你手动填写，本身就已经是整齐的数值，所以不额外取整也不会产生误差。
+      </div>
+
+      <h3>七、快捷操作</h3>
+      <table class="term">
+        <tr><th style="width:190px">操作</th><th>说明</th></tr>
+        <tr><td>全部复原</td><td>清空所有输入，回到空白状态。</td></tr>
+        <tr><td>复原硬币明细</td><td>保留技能参数与全局设置，只清空 18 行硬币明细与三组循环数据 —— 算同一人格的第二条技能时最省时间。</td></tr>
+        <tr><td>人格分组</td><td>顶部填一个「人格」名，存档时会一并记录；存档区可按人格筛选，方便同一人格的多个技能放在一起比对。</td></tr>
+        <tr><td>存档 / 快速存档</td><td>把当前全部输入与逐硬币明细存为档案；列表直接显示拼点与总伤害，便于横向比对。</td></tr>
+        <tr><td>导出 CSV</td><td>把当前逐硬币结果导成表格，方便在 Excel 里做趋势分析或贴给别人看。</td></tr>
+        <tr><td>导出 / 导入备份</td><td>整包 JSON，用于跨设备迁移与长期备份。</td></tr>
+        <tr><td>撤销 / 重做</td><td>改错了可以回退。<span class="kbd">Ctrl</span>+<span class="kbd">Z</span> 撤销，<span class="kbd">Ctrl</span>+<span class="kbd">Y</span> 重做；同一格连续输入会合并成一步。</td></tr>
+        <tr><td>表格内移动</td><td>在硬币明细里按 <span class="kbd">Enter</span> 或 <span class="kbd">↑</span> <span class="kbd">↓</span> 可在行间上下移动（<span class="kbd">Shift</span>+<span class="kbd">Enter</span> 反向）；<span class="kbd">Tab</span> 横向移动。</td></tr>
+        <tr><td><span class="kbd">Ctrl</span>+<span class="kbd">S</span></td><td>快速存档。</td></tr>
+        <tr><td>自动保存</td><td>输入实时写入本机浏览器，误关页面后重新打开会自动恢复。</td></tr>
+      </table>
+
+      <h3>八、常见疑问</h3>
+      <p style="color:var(--muted);font-size:11.5px">点开对应条目查看解答。</p>
+      <details>
+        <summary>网页算出来和别处差 1 点？</summary>
+        <div class="dbody">
+          多数是浮点尾数导致的取整方向差异。展开「逐硬币计算过程」表，对照「取整前伤害」与「取整损失」两列 ——
+          如果「取整前伤害」是 <code>23.0000</code> 这类贴着整数的值，说明它本来就在边界上，本工具会按真实小数处理。
+        </div>
+      </details>
+      <details>
+        <summary>档案存在哪里？会丢吗？</summary>
+        <div class="dbody">
+          保存在本机浏览器的 localStorage，不会上传任何服务器。清理浏览器数据会连同档案一起删除，
+          <b>重要档案请用「导出备份」存成 JSON 文件</b>。
+        </div>
+      </details>
+
+    </div>
+  </div>
+
+</main>
+
+<div id="overlay"><div class="modal">
+  <h3 id="mTitle">存档</h3>
+  <div class="mb">
+    <label for="mName">档案名称</label>
+    <input type="text" id="mName" placeholder="例如：人格名 · 技能2 · 满共鸣">
+    <label for="mNote">备注（可选）</label>
+    <textarea id="mNote" placeholder="例如：3币满呼吸，敌方45级，用于核对第二循环"></textarea>
+  </div>
+  <div class="mf">
+    <button id="mCancel">取消</button>
+    <button class="primary" id="mOk">确定</button>
+  </div>
+</div></div>
+
+<nav id="anchorNav" aria-label="板块导航"></nav>
+
+<div id="toast"></div>
+
+<script>
+"use strict";
+/* ================= 常量与工具 ================= */
+const COIN_ROWS = 18, COIN_MAIN = 9, LOOP_LEN = 6;
+
+/* 只允许整数的字段（乘区、追伤系数等仍可填小数，不在其中） */
+const INT_PATHS = ["coinCount","coinPower","basePower","capacity","atkLevel",
+                   "baseBonus","coinBonus","clashBonus","atkLevelBonus","enemyLevel","rerollCount"];
+const INT_COIN_KEYS = ["breath","h","i","fixed"];
+/* 在上面基础上，还不允许为负的字段 */
+const NONNEG_PATHS = ["coinCount","coinPower","basePower","capacity","atkLevel",
+                      "enemyLevel","rerollCount"];
+/* 在此基础上还要求至少为 1 的字段 */
+const MIN1_PATHS = ["capacity"];
+const NONNEG_COIN_KEYS = ["breath"];
+
+/* 按字段规则规范化一个输入值：整数字段取整、受限字段钳到 0；其余字段仅转数字 */
+function sanitizeNumber(path, raw){
+  const parts = String(path).split(".");
+  const v0 = num(raw);
+  if(parts[0] === "coins" && parts.length === 3){
+    const key = parts[2];
+    if(INT_COIN_KEYS.indexOf(key) >= 0){
+      let v = Math.round(v0);
+      if(NONNEG_COIN_KEYS.indexOf(key) >= 0 && v < 0) v = 0;
+      return v;
+    }
+    return v0;
+  }
+  if(INT_PATHS.indexOf(path) >= 0){
+    let v = Math.round(v0);
+    if(NONNEG_PATHS.indexOf(path) >= 0 && v < 0) v = 0;
+    if(MIN1_PATHS.indexOf(path) >= 0 && v < 1) v = 1;
+    return v;
+  }
+  return v0;
+}
+
+/* 未启用的硬币行一律清零，避免「看不见但还带着数据」 */
+function clearInactiveCoins(s){
+  const cleared = [];
+  for(let i = 0; i < COIN_ROWS; i++){
+    const isReroll = i >= COIN_MAIN;
+    const k = isReroll ? i - COIN_MAIN + 1 : i + 1;
+    const active = isReroll ? (s.reroll === "是" && k <= num(s.rerollCount))
+                            : (k <= num(s.coinCount));
+    const c = s.coins[i];
+    if(!active && c){
+      if(c.breath || c.z2 || c.h || c.i || c.fixed || c.coef || c.extra === "是") cleared.push(i);
+      c.breath = 0; c.z2 = 0; c.h = 0; c.i = 0;
+      c.fixed = 0; c.extra = "否"; c.coef = 0;
+    }
+  }
+  return cleared;
+}
+/* 版本号单一来源：页头展示与导出文件都读它，升级版本只改这一行 */
+const APP_VERSION = "3.2";
+
+const LS_CUR  = "jingxi_calc_current_v1";
+const LS_ARCH = "jingxi_calc_archives_v1";
+/* 旧版本使用的键名。启动时若新键为空会自动搬过来，避免升级后存档“消失”。 */
+
+function num(v){ const n = typeof v === "number" ? v : parseFloat(v); return isFinite(n) ? n : 0; }
+function fmt(v, dp){
+  if(v === null || v === undefined || v === "") return "";
+  if(typeof v !== "number" || !isFinite(v)) return String(v);
+  if(dp === undefined){
+    if(Math.abs(v - Math.round(v)) < 1e-12) return String(Math.round(v));
+    return String(parseFloat(v.toFixed(6)));
+  }
+  return v.toFixed(dp);
+}
+/* Excel ROUND：四舍五入，负数远离零 */
+function excelRound(v, d){
+  v = num(v);
+  if(!isFinite(v)) return 0;
+  const m = Math.pow(10, d);
+  let x = v * m;
+  x = Math.round(x * 1e6) / 1e6;           // 修正浮点表示误差
+  const s = x < 0 ? -1 : 1;
+  return s * Math.round(Math.abs(x) + 1e-9) / m;
+}
+/* Excel INT：向下取整 */
+/* Excel INT：向下取整；消除浮点尾数（如 -81.00000000000001 的真值为 -81，
+   Excel/LibreOffice 以 ~15 位有效数字计算得 -81，故对极度接近整数者吸附，
+   仅影响 1e-9 内的表示误差，不改变真实小数如 -81.4 仍取 -82） */
+function excelInt(v){
+  v = num(v);
+  if(!isFinite(v)) return 0;
+  const r = Math.round(v);
+  if(Math.abs(v - r) < 1e-9) return r;
+  return Math.floor(v);
+}
+const ESC_MAP = {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"};
+function esc(s){ return String(s).replace(/[&<>"']/g, c => ESC_MAP[c]); }
+function nowStr(){
+  const d = new Date(), p = n => String(n).padStart(2,"0");
+  return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+" "+p(d.getHours())+":"+p(d.getMinutes())+":"+p(d.getSeconds());
+}
+function stamp(){
+  const d = new Date(), p = n => String(n).padStart(2,"0");
+  return d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+"-"+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());
+}
+
+/* 紧凑时间：20:28 */
+function shortTime(){
+  const d = new Date(), p = n => String(n).padStart(2,"0");
+  return p(d.getHours()) + ":" + p(d.getMinutes());
+}
+/* 「2026-10-28 20:28:15」-> 「10-28 20:28」 */
+function shortStamp(s){
+  const str = String(s || "");
+  const m = str.match(/^\d{4}-(\d{2}-\d{2})[ T](\d{2}:\d{2})/);
+  return m ? (m[1] + " " + m[2]) : (str || "—");
+}
+
+/* 统一的存档名：技能名 · 3币1重 · 20:28；循环档传入 T3 作为前缀 */
+function buildArchiveName(prefix){
+  const skill  = String(S.skillName || "").trim() || "未命名技能";
+  const coins  = num(S.coinCount);
+  const reroll = (S.reroll === "是") ? num(S.rerollCount) : 0;
+  const cfg = coins + "币" + (reroll > 0 ? reroll + "重" : "");
+  const parts = [];
+  if(prefix) parts.push(prefix);
+  parts.push(skill, cfg, shortTime());
+  return parts.join(" · ");
+}
+
+/* ================= 状态 ================= */
+/* 存档结构版本：以后若字段有增删，把版本号 +1 并在 migrateState 里补一段迁移即可 */
+const STATE_VER = 2;
+
+function blankCoin(){ return {breath:0, z2:0, h:0, i:0, fixed:0, extra:"否", coef:0}; }
+function defaultState(){
+  return {
+    ver:STATE_VER, character:"", skillName:"",
+    coinCount:0, basePower:0, coinPower:0, capacity:1, atkLevel:0, counter:"否", joinClash:"是",
+    baseBonus:0, coinBonus:0, clashBonus:0, atkLevelBonus:0, enemyLevel:0,
+    crit:"否", reroll:"否", z1:0, rerollCount:0, z2:0, rerollClash:"否",
+    coins: Array.from({length:COIN_ROWS}, blankCoin),
+    loop1: Array(LOOP_LEN).fill(0),
+    loop2: Array(LOOP_LEN).fill(0),
+    loop3: Array(LOOP_LEN).fill(0),
+    loop1c: Array(LOOP_LEN).fill(null),
+    loop2c: Array(LOOP_LEN).fill(null),
+    loop3c: Array(LOOP_LEN).fill(null)
+  };
+}
+let S = defaultState();
+
+/* 结构版本迁移入口。当前只有 v2，没有历史数据需要转换；
+   将来若字段有增删，在这里按 s.ver 分支处理即可。 */
+function migrateState(s){
+  s.ver = STATE_VER;
+  return s;
+}
+
+function normalize(o){
+  const d = defaultState();
+  if(!o || typeof o !== "object") return d;
+  /* 白名单拷贝：只接收当前结构里确实存在的字段，
+     旧版本残留或外部 JSON 的多余属性一律丢弃。 */
+  for(const k of Object.keys(d)){
+    if(o[k] !== undefined) d[k] = o[k];
+  }
+  const s = d;
+  migrateState(s);
+  /* 注意：Object.assign 已经把 o.coins 覆盖到 d.coins 上，
+     所以这里必须重新生成一份干净的默认硬币，不能再引用 d.coins。
+     长度不足则补齐、超出则截断，避免 compute 取到 undefined 而整页白屏。 */
+  const blank = Array.from({length:COIN_ROWS}, blankCoin);
+  if(!Array.isArray(s.coins)) s.coins = blank;
+  if(s.coins.length < COIN_ROWS) s.coins = s.coins.concat(blank.slice(s.coins.length));
+  else if(s.coins.length > COIN_ROWS) s.coins = s.coins.slice(0, COIN_ROWS);
+  s.coins = s.coins.map(c => Object.assign(blankCoin(), c || {}));
+  ["loop1","loop2","loop3"].forEach(k => {
+    if(!Array.isArray(s[k]) || s[k].length !== LOOP_LEN) s[k] = Array(LOOP_LEN).fill(0);
+    s[k] = s[k].map(num);
+  });
+  ["loop1c","loop2c","loop3c"].forEach(k => {
+    const raw = Array.isArray(s[k]) ? s[k] : [];
+    s[k] = Array.from({length: LOOP_LEN}, (_, i) => {
+      const v = raw[i];
+      return (v === null || v === undefined || v === "") ? null : num(v);
+    });
+  });
+  ["coinCount","rerollCount"].forEach(k => s[k] = Math.max(0, Math.min(9, Math.round(num(s[k])))));
+  ["basePower","coinPower","capacity","atkLevel","baseBonus","coinBonus","clashBonus",
+   "atkLevelBonus","enemyLevel","z1","z2"].forEach(k => s[k] = num(s[k]));
+  ["counter","crit","reroll","rerollClash","joinClash"].forEach(k => s[k] = (s[k] === "是" ? "是" : "否"));
+  ["skillName","character"].forEach(k => s[k] = (s[k] == null ? "" : String(s[k])));
+  s.coins.forEach(c => {
+    ["breath","z2","h","i","fixed","coef"].forEach(k => c[k] = num(c[k]));
+    c.extra = (c.extra === "是" ? "是" : "否");
+  });
+  clearInactiveCoins(s);            // 未启用的行不留数据
+  return s;
+}
+
+/* ================= 计算引擎（1:1 还原 xlsx 公式） ================= */
+/* 把数字写进算式时用的紧凑格式：整数不留小数，其余最多 4 位 */
+function fxNum(n){
+  const v = num(n);
+  if(Math.abs(v - Math.round(v)) < 1e-12) return String(Math.round(v));
+  return String(parseFloat(v.toFixed(4)));
+}
+
+function compute(s){
+  const levelDiff = num(s.atkLevel) + num(s.atkLevelBonus) - num(s.enemyLevel);
+  /* 分母取绝对值，避免 levelDiff 接近 −25 时结果爆炸（旧式在 −24 会得到 −24 倍） */
+  const levelMod  = levelDiff / (Math.abs(levelDiff) + 25);
+  const finalBase = excelInt(num(s.basePower) + num(s.baseBonus) + (s.counter === "是" ? levelDiff / 3 : 0));
+  const finalCoin = num(s.coinPower) + num(s.coinBonus);
+  const powerTotal = num(s.basePower) + num(s.baseBonus) + finalCoin * num(s.coinCount);
+  const z1 = num(s.z1), z2 = num(s.z2), cap = num(s.capacity);
+
+  const rows = [];
+  let sumH = 0, sumI = 0;           // 累计（含当前行），用于 J
+  let coinH = 0, rerollH = 0;       // 拼点用：硬币行 / 重投行的「单币硬币威力」
+  let sumJ = 0, sumK = 0, sumN = 0, sumO = 0, activeCoins = 0;
+
+  for(let idx = 0; idx < COIN_ROWS; idx++){
+    const isReroll = idx >= COIN_MAIN;
+    const k = isReroll ? idx - COIN_MAIN + 1 : idx + 1;
+    const active = isReroll ? (s.reroll === "是" && k <= num(s.rerollCount))
+                            : (k <= num(s.coinCount));
+    const c = s.coins[idx] || blankCoin();     // 防御：数据异常时不牵连整页
+
+    /* 未启用的行不参与任何累计：威力、追伤、固定追伤都不算 */
+    const hv = active ? num(c.h) : 0;
+    const iv = active ? num(c.i) : 0;
+    sumH += hv; sumI += iv;
+    if(active){ if(isReroll) rerollH += hv; else coinH += hv; }
+
+    const N = isReroll ? (num(s.coinCount) + k) : k;
+    const critRate = num(c.breath) * 0.05;
+    const critPart = (s.crit === "是") ? 0.2 : Math.min(critRate * 0.2, 0.2);
+    const fRaw = critPart + z1 + levelMod;
+    const F = excelRound(fRaw, 2);
+    const G = num(c.z2);
+    const m1 = 1 + z1 + F;
+    const m2 = 1 + z2 + G;
+    const powerBase = finalBase + finalCoin * N + sumH + sumI;
+    const mult = m1 * m2;
+    const rawJ = powerBase * mult * cap;
+    // 边狱巴士里除非技能写明「不造成伤害」，否则至少打出 1 点
+    const J = active ? Math.max(1, excelInt(rawJ)) : null;
+    // Excel N 列 = IF(L="是", INT(J*M), 0)，对未启用行同样求值（此时 J 视为空→0）
+    const extraRaw = (c.extra === "是") ? (J === null ? 0 : J) * num(c.coef) : null;
+    const Nv = (c.extra === "是") ? excelInt(extraRaw) : 0;
+    const fixedPart = num(c.fixed) * cap;
+    const O = (active && J !== null) ? excelInt(J + Nv + fixedPart) : null;
+
+    if(active){
+      activeCoins += isReroll ? 0 : 1;
+      sumJ += J; sumO += O;
+      sumN += Nv;
+      sumK += num(c.fixed);
+    }
+
+    // 公式代入式：把本行的实际数字写进算式，便于逐项核对
+    const exprF = "ROUND( " + fxNum(critPart) + " + " + fxNum(z1) + " + " + fxNum(levelMod) + " , 2 ) = " + fxNum(F);
+    const exprJ = "INT( (" + fxNum(finalBase) + " + " + fxNum(finalCoin) + "×" + fxNum(N)
+                + " + " + fxNum(sumH) + " + " + fxNum(sumI) + ")"
+                + " × (1+" + fxNum(z1) + "+" + fxNum(F) + ") × (1+" + fxNum(z2) + "+" + fxNum(G) + ")"
+                + " × " + fxNum(cap) + " )" + (J === null ? " = 未启用" : " = " + fxNum(J));
+    const exprO = (O === null) ? "未启用"
+                : "INT( " + fxNum(J) + " + " + fxNum(Nv) + " + " + fxNum(num(c.fixed)) + "×" + fxNum(cap) + " ) = " + fxNum(O);
+
+    rows.push({
+      idx, isReroll, k, active, N,
+      label: (isReroll ? "重投" : "硬币") + k,
+      exprF, exprJ, exprO,
+      breath:num(c.breath), critRate, critPart, fRaw, F, G, m1, m2,
+      sumH, sumI, powerBase, mult, rawJ, J, loss: (J === null ? null : rawJ - J),
+      extra:c.extra, coef:num(c.coef), extraRaw, Nv,
+      fixed:num(c.fixed), fixedPart, O
+    });
+  }
+
+  /* 重投行的「单币硬币威力」只有在「重投参与拼点 = 是」时才计入拼点 */
+  const clashPower = coinH + (s.rerollClash === "是" ? rerollH : 0);
+  /* 不可拼点反击，或用户显式选择「不参与拼点」时，拼点点数为 0 */
+  const clash = (s.counter === "是" || s.joinClash === "否") ? 0 : excelInt(
+      num(s.basePower) + num(s.baseBonus) + finalCoin * num(s.coinCount)
+    + levelDiff / 3 + num(s.clashBonus)
+    + ((s.reroll === "是" && s.rerollClash === "是") ? finalCoin * num(s.rerollCount) : 0)
+    + clashPower
+  );
+
+  const l1 = s.loop1.reduce((a,b)=>a+num(b),0);
+  const l2 = s.loop2.reduce((a,b)=>a+num(b),0);
+  const l3 = s.loop3.reduce((a,b)=>a+num(b),0);
+
+  return {
+    levelDiff, levelMod, finalBase, finalCoin, powerTotal,
+    rows, sumH, sumI, sumJ, sumK, sumN, sumO, activeCoins, clashPower,
+    clash, total:sumO, loop1:l1, loop2:l2, loop12:l1+l2, loop3:l3
+  };
+}
+
+/* ================= DOM 构建 ================= */
+const $ = id => document.getElementById(id);
+
+function buildCoinTable(){
+  let html = "";
+  for(let idx = 0; idx < COIN_ROWS; idx++){
+    if(idx === COIN_MAIN) html += '<tr class="sep"><td colspan="12"></td></tr>';
+    const isReroll = idx >= COIN_MAIN;
+    const k = isReroll ? idx - COIN_MAIN + 1 : idx + 1;
+    html += '<tr id="crow-'+idx+'" data-idx="'+idx+'">'
+      + '<td class="lab">'+(isReroll?"重投":"硬币")+k+'</td>'
+      + '<td class="cell-in"><input type="number" step="any" data-bind="coins.'+idx+'.breath"></td>'
+      + '<td class="cell-auto blank" id="cF-'+idx+'"></td>'
+      + '<td class="cell-in"><input type="number" step="any" data-bind="coins.'+idx+'.z2"></td>'
+      + '<td class="cell-in"><input type="number" step="any" data-bind="coins.'+idx+'.h"></td>'
+      + '<td class="cell-in"><input type="number" step="any" data-bind="coins.'+idx+'.i"></td>'
+      + '<td class="cell-auto blank" id="cJ-'+idx+'"></td>'
+      + '<td class="cell-in"><input type="number" step="any" data-bind="coins.'+idx+'.fixed"></td>'
+      + '<td class="cell-in"><select data-bind="coins.'+idx+'.extra"><option>否</option><option>是</option></select></td>'
+      + '<td class="cell-in"><input type="number" step="any" data-bind="coins.'+idx+'.coef"></td>'
+      + '<td class="cell-auto blank" id="cN-'+idx+'"></td>'
+      + '<td class="cell-auto blank" id="cO-'+idx+'"></td>'
+      + '</tr>';
+  }
+  html += '<tr id="coinEmpty" class="coinempty"><td colspan="12">'
+    + '<div class="empty-state">'
+    +   '<div class="empty-shards"><i></i><i></i><i></i></div>'
+    +   '<div class="empty-title">还没有启用任何硬币</div>'
+    +   '<div class="empty-sub">把「硬币数量」设为 1 以上，硬币行会依次浮现</div>'
+    + '</div></td></tr>';
+  $("coinBody").innerHTML = html;
+}
+
+const CN_NUM = ["一","二","三","四","五","六","七","八","九","十","十一","十二"];
+/* 第二循环接着第一循环往下数（第七~第十二回合） */
+function roundLabel(key, i){
+  const base = (key === "loop2") ? 6 : 0;
+  return "第" + CN_NUM[base + i] + "回合";
+}
+
+function buildLoops(){
+  ["loop1","loop2","loop3"].forEach(key => {
+    const box = $(key + "cells");
+    if(!box) return;
+    let dmg = "", cl = "";
+    for(let i = 0; i < LOOP_LEN; i++){
+      const label = roundLabel(key, i);
+      dmg += '<label class="loopcell"><span class="n">' + label + '</span>'
+           + '<input type="number" step="any" class="man" data-bind="' + key + '.' + i + '" title="' + label + ' 伤害"></label>';
+      cl  += '<div class="clashcell">'
+           + '<input type="number" step="any" class="man" data-bind="' + key + 'c.' + i + '" placeholder="—" title="' + label + ' 拼点">'
+           + '<button type="button" class="skip" data-skip="' + key + 'c.' + i + '" title="本回合不参与平均拼点">×</button>'
+           + '</div>';
+    }
+    box.innerHTML = '<div class="looprow">' + dmg + '</div>'
+                  + '<div class="looprow clashrow">' + cl + '</div>'
+                  + '<div class="loopbars" id="' + key + 'bars"></div>';
+  });
+}
+
+/* 平均拼点：只统计有数值的回合，四舍五入取整 */
+function loopAvg(key){
+  const arr = (S[key + "c"] || []);
+  const vals = arr.filter(v => v !== null && v !== undefined && v !== "" && isFinite(num(v)));
+  if(!vals.length) return 0;
+  const sum = vals.reduce((a, b) => a + num(b), 0);
+  return Math.round(sum / vals.length);
+}
+
+/* 同一帧内的多次输入只重绘一次：输入框连续敲键时明显更顺 */
+let refreshQueued = false;
+function scheduleRefresh(){
+  if(refreshQueued) return;
+  refreshQueued = true;
+  const run = () => { refreshQueued = false; refresh(); };
+  if(typeof requestAnimationFrame === "function") requestAnimationFrame(run);
+  else setTimeout(run, 0);
+}
+
+/* ================= 渲染 ================= */
+function setOut(id, v, dp){
+  const el = $(id); if(!el) return;
+  const txt = fmt(v, dp);
+  el.textContent = (txt === "" ? "—" : txt);
+  el.classList.toggle("blank", txt === "");
+}
+function setCell(id, v, dp){
+  const el = $(id); if(!el) return;
+  const txt = fmt(v, dp);
+  el.textContent = (txt === "" ? "—" : txt);
+  el.classList.toggle("blank", txt === "");
+}
+
+let R = null;
+let firstPaint = true;
+
+/* 核心数字变化时做一次快速滚动；首次渲染与无动画环境直接落值 */
+function flashNum(el, txt){
+  if(!el) return;
+  if(el.textContent === txt) return;
+  if(firstPaint || window.__NO_ANIM__){ el.textContent = txt; return; }
+
+  const from = parseFloat(String(el.textContent).replace(/[^\d.-]/g, ""));
+  const to = parseFloat(txt);
+  if(!isFinite(from) || !isFinite(to)){ el.textContent = txt; return; }
+
+  const dur = 300;
+  const t0 = performance.now();
+  function step(now){
+    const p = Math.min(1, (now - t0) / dur);
+    const e = 1 - Math.pow(1 - p, 3);          // easeOutCubic
+    el.textContent = fmt(Math.round(from + (to - from) * e));
+    if(p < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function refresh(){
+  const clearedRows = clearInactiveCoins(S);   // 硬币数量/重投次数变化后，被隐藏的行立即归零
+  R = compute(S);
+  setOut("o-levelDiff", R.levelDiff);
+  setOut("o-levelMod", R.levelMod, 6);
+  setOut("o-critPart", S.crit === "是" ? 0.2 : null);
+  setOut("o-finalBase", R.finalBase);
+  setOut("o-finalCoin", R.finalCoin);
+  setOut("o-powerTotal", R.powerTotal);
+  flashNum($("o-clash"), fmt(R.clash));
+  flashNum($("o-total"), fmt(R.total));
+  $("o-activeCoins").textContent = R.activeCoins
+    + (S.reroll === "是" ? " + " + Math.max(0, Math.min(9, num(S.rerollCount))) + " 重投" : "");
+  setOut("o-sumJ", R.sumJ);
+  setOut("o-sumN", R.sumN);
+  setOut("o-sumK", R.sumK);
+  setOut("o-loop1", R.loop1); setOut("o-loop2", R.loop2);
+  setOut("o-loop12", R.loop12); setOut("o-loop3", R.loop3);
+  $("o-loop1b").textContent = fmt(R.loop1);
+  $("o-loop2b").textContent = fmt(R.loop2);
+  $("o-loop3b").textContent = fmt(R.loop3);
+
+  $("f-sumJ").textContent = fmt(R.sumJ);
+  $("f-sumK").textContent = fmt(R.sumK);
+  $("f-sumN").textContent = fmt(R.sumN);
+  $("f-sumO").textContent = fmt(R.sumO);
+
+  R.rows.forEach(r => {
+    const tr = $("crow-" + r.idx);
+    if(tr) tr.classList.toggle("hide", !r.active);
+    // 未启用的行直接隐藏；其数据仍保留在 state 中，改回启用即会重新出现
+    setCell("cF-" + r.idx, r.F, 2);      // Excel F 列对所有行恒有值
+    setCell("cJ-" + r.idx, r.J);
+    setCell("cN-" + r.idx, r.Nv);        // Excel N 列对所有行恒有值
+    setCell("cO-" + r.idx, r.O);
+  });
+
+  // 没有启用的重投时，分隔行也一并隐藏
+  const sepRow = document.querySelector("#coinBody tr.sep");
+  if(sepRow) sepRow.style.display = (S.reroll === "是" && num(S.rerollCount) > 0) ? "" : "none";
+
+  // 一枚都没启用时给出提示，避免表格看起来是空的
+  const emptyRow = $("coinEmpty");
+  if(emptyRow) emptyRow.style.display = R.rows.some(x => x.active) ? "none" : "";
+
+  renderDetail();
+  renderComposition();
+  renderLoopBars();
+  ["loop1","loop2","loop3"].forEach((k, i) => {
+    const el = $("o-avg" + (i+1));
+    if(el) el.textContent = fmt(loopAvg(k));
+  });
+  // 反击=是 表示根本不参与拼点，隐藏「是否参与拼点」
+  const jcRow = $("joinClashRow");
+  if(jcRow) jcRow.hidden = (S.counter === "是");
+  // 有行被清空时，把值同步回控件，否则「是否追伤 / 追伤系数」会残留旧显示
+  if(clearedRows.length) syncInputs();
+  firstPaint = false;
+}
+
+/* ================= 复制结果 ================= */
+function copyText(text){
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    return navigator.clipboard.writeText(text).then(() => true).catch(() => fallbackCopy(text));
+  }
+  return Promise.resolve(fallbackCopy(text));
+}
+function fallbackCopy(text){
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.style.position = "fixed";
+  ta.style.left = "-9999px";
+  ta.style.top = "0";
+  document.body.appendChild(ta);
+  ta.focus(); ta.select();
+  let ok = false;
+  try{ ok = document.execCommand("copy"); }catch(e){ ok = false; }
+  document.body.removeChild(ta);
+  return ok;
+}
+function resultText(){
+  const r = compute(S);
+  const lines = [];
+  lines.push("镜息演算 v" + APP_VERSION);
+  if(S.character) lines.push("人格：" + S.character);
+  if(S.skillName) lines.push("技能：" + S.skillName);
+  lines.push("硬币数：" + num(S.coinCount) + (S.reroll === "是" ? "（重投 " + num(S.rerollCount) + " 次）" : ""));
+  lines.push("");
+  lines.push("拼点点数：" + fmt(r.clash));
+  lines.push("总伤害：" + fmt(r.total));
+  lines.push("");
+  lines.push("第一循环（启动轮）：" + fmt(r.loop1));
+  lines.push("第二循环（启动后）：" + fmt(r.loop2));
+  lines.push("两轮循环总和　　：" + fmt(r.loop12));
+  lines.push("极限循环（上限）：" + fmt(r.loop3));
+  return lines.join("\n");
+}
+/* ================= 参数扫描 ================= */
+const SWEEP_DEF = {
+  breath:      [0, 20, 1],
+  enemyLevel:  [40, 50, 1],
+  atkLevel:    [40, 50, 1],
+  basePower:   [0, 12, 1],
+  coinPower:   [0, 6, 1],
+  baseBonus:   [0, 10, 1],
+  coinBonus:   [0, 6, 1],
+  clashBonus:  [0, 6, 1],
+  capacity:    [1, 4, 1],
+  z1:          [0, 0.5, 0.05],
+  z2:          [0, 0.5, 0.05],
+  coinCount:   [1, 9, 1]
+};
+const SWEEP_LABEL = {
+  breath:"呼吸法强度", enemyLevel:"敌方等级", atkLevel:"攻击等级",
+  basePower:"基础威力", coinPower:"硬币威力", baseBonus:"终础威力加成",
+  coinBonus:"硬币威力加成", clashBonus:"拼点威力加成",
+  capacity:"攻击容量", z1:"技能第一乘区", z2:"技能第二乘区", coinCount:"硬币数量"
+};
+
+function applySweep(t, key, v){
+  if(key === "breath"){
+    t.coins.forEach(c => c.breath = v);
+  } else if(key === "coinCount"){
+    t.coinCount = Math.max(0, Math.min(9, Math.round(v)));
+  } else {
+    t[key] = v;
+  }
+}
+
+function runSweep(){
+  const key = $("sweepParam").value;
+  let from = num($("sweepFrom").value);
+  let to = num($("sweepTo").value);
+  let step = num($("sweepStep").value);
+  if(!(step > 0)){ toast("步长必须大于 0", "err"); return; }
+  if(from > to){ const tmp = from; from = to; to = tmp; }
+  const n = Math.floor((to - from) / step + 1e-9) + 1;
+  if(n > 200){ toast("点太多（" + n + " 个），请把步长调大一些", "err"); return; }
+  if(n < 2){ toast("区间内至少要有 2 个取值", "err"); return; }
+
+  const baseState = JSON.parse(JSON.stringify(S));
+  const out = [];
+  for(let i = 0; i < n; i++){
+    const v = from + step * i;
+    const t = JSON.parse(JSON.stringify(baseState));
+    applySweep(t, key, v);
+    const r = compute(normalize(t));
+    out.push({v: v, total: r.total, clash: r.clash});
+  }
+  renderSweep(out, key);
+  const sres = $("sweepResult");
+  if(sres) sres.open = true;            // 扫描后自动展开，之后可随时收起
+  // 存一份，刷新页面后还能看到上次的扫描
+  try{
+    localStorage.setItem(LS_SWEEP, JSON.stringify({
+      key: key, from: from, to: to, step: step, data: out, at: nowStr()
+    }));
+  }catch(e){}
+  S = baseState;                     // 扫描是纯推演，不改变当前输入
+  syncInputs(); refresh(); updateUndoUI();
+}
+
+function renderSweep(data, key){
+  lastSweep = {data: data, key: key, at: nowStr()};
+  const label = SWEEP_LABEL[key] || key;
+  const chart = $("sweepChart");
+  const tbl = $("sweepTable");
+  const note = $("sweepNote");
+
+  const W = 760, H = 240, PL = 46, PR = 14, PT = 14, PB = 34;
+  const xs = data.map(d => d.v), ys = data.map(d => d.total);
+  const x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
+  let y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
+  if(y1 - y0 < 1e-9){ y1 = y0 + 1; }        // 全是同一个值时避免除零
+
+  const px = v => PL + (x1 === x0 ? (W - PL - PR) / 2 : (v - x0) / (x1 - x0) * (W - PL - PR));
+  const py = v => H - PB - (v - y0) / (y1 - y0) * (H - PT - PB);
+
+  let maxI = 0;
+  data.forEach((d, i) => { if(d.total > data[maxI].total) maxI = i; });
+
+  /* 深色模式下换一套线稿配色 */
+  const isDark = document.documentElement.getAttribute("data-theme") !== "light";
+  const cGrid = isDark ? "#2C3846" : "#e3e9f1";
+  const cAxis = isDark ? "#7D8B99" : "#8a94a0";
+  const cLine = isDark ? "#7FB2E5" : "#2F5496";
+  const cDot  = isDark ? "#8FB8E8" : "#5B9BD5";
+  const cMax  = isDark ? "#FF8A73" : "#CC0000";
+
+  let grid = "";
+  for(let i = 0; i <= 4; i++){
+    const val = y0 + (y1 - y0) * i / 4;
+    const y = py(val);
+    grid += '<line x1="' + PL + '" y1="' + y.toFixed(1) + '" x2="' + (W - PR) + '" y2="' + y.toFixed(1)
+          + '" stroke="' + cGrid + '" stroke-width="1"/>';
+    grid += '<text x="' + (PL - 6) + '" y="' + (y + 4).toFixed(1)
+          + '" font-size="10" fill="' + cAxis + '" text-anchor="end">' + esc(fmt(Math.round(val))) + '</text>';
+  }
+  const pts = data.map(d => px(d.v).toFixed(1) + ',' + py(d.total).toFixed(1)).join(" ");
+  let dots = "";
+  if(data.length <= 60){
+    data.forEach((d, i) => {
+      dots += '<circle cx="' + px(d.v).toFixed(1) + '" cy="' + py(d.total).toFixed(1)
+            + '" r="' + (i === maxI ? 4 : 2.4) + '" fill="' + (i === maxI ? cMax : cDot) + '"/>';
+    });
+  }
+  /* 折点数值：点太密时隔几个标一次，始终保留最高点与末点 */
+  const nPt = data.length;
+  const gapX = nPt > 1 ? (W - PL - PR) / (nPt - 1) : (W - PL - PR);
+  const skip = Math.max(1, Math.ceil(34 / Math.max(gapX, 1)));
+  let labels = "";
+  data.forEach((d, i) => {
+    if(i % skip !== 0 && i !== maxI && i !== nPt - 1) return;
+    const x = px(d.v), y = py(d.total);
+    const above = y > PT + 13;
+    labels += '<text x="' + x.toFixed(1) + '" y="' + (above ? y - 7 : y + 14).toFixed(1)
+           + '" font-size="9.5" text-anchor="middle"'
+           + ' fill="' + (i === maxI ? cMax : cAxis) + '"'
+           + (i === maxI ? ' font-weight="700"' : '') + '>'
+           + esc(fmt(d.total)) + '</text>';
+  });
+  const xlab = '<text x="' + PL + '" y="' + (H - 10) + '" font-size="10" fill="' + cAxis + '">' + esc(fmt(x0)) + '</text>'
+             + '<text x="' + (W - PR) + '" y="' + (H - 10) + '" font-size="10" fill="' + cAxis + '" text-anchor="end">' + esc(fmt(x1)) + '</text>'
+             + '<text x="' + ((W - PL - PR) / 2 + PL) + '" y="' + (H - 10) + '" font-size="10" fill="' + cAxis + '" text-anchor="middle">' + esc(label) + '</text>';
+
+  chart.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">'
+    + grid + xlab
+    + '<polyline points="' + pts + '" fill="none" stroke="' + cLine + '" stroke-width="2" stroke-linejoin="round"/>'
+    + dots + labels
+    + '</svg>';
+
+  let rows = "";
+  data.forEach((d, i) => {
+    const flat = i > 0 && d.total === data[i-1].total;
+    rows += '<tr' + (i === maxI ? ' class="sweepmax"' : '') + '>'
+      + '<td>' + esc(fmt(d.v)) + '</td>'
+      + '<td' + (i === maxI ? ' class="sweepmark"' : '') + '>' + esc(fmt(d.total)) + '</td>'
+      + '<td>' + esc(fmt(d.clash)) + '</td>'
+      + '<td>' + (flat ? '<span class="sweepflat">持平</span>' : (i > 0 ? (d.total > data[i-1].total ? '↑' : '↓') : '—')) + '</td>'
+      + '</tr>';
+  });
+  tbl.innerHTML = '<table><thead><tr><th>' + esc(label) + '</th><th>总伤害</th><th>拼点</th><th>变化</th></tr></thead><tbody>'
+    + rows + '</tbody></table>';
+
+  // 关键结论
+  const msgs = [];
+  msgs.push('在 ' + fmt(x0) + ' → ' + fmt(x1) + ' 区间内，总伤害从 <b>' + fmt(data[0].total)
+    + '</b> 变到 <b>' + fmt(data[data.length-1].total) + '</b>，最高 <b>' + fmt(data[maxI].total)
+    + '</b>（' + esc(label) + ' = ' + fmt(data[maxI].v) + '）。');
+
+  // 平台期：从某个点起，后面全部相同
+  let flatFrom = -1;
+  for(let i = 1; i < data.length; i++){
+    if(data[i].total === data[data.length-1].total){
+      flatFrom = i; break;
+    }
+  }
+  if(flatFrom > 0 && data[data.length-1].total === data[maxI].total){
+    msgs.push('<b>' + esc(label) + ' 超过 ' + fmt(data[flatFrom].v) + ' 之后伤害不再增长</b>，再往上加没有收益。');
+  }
+  if(data.every(d => d.total === data[0].total)){
+    msgs.push('整个区间内伤害完全不变 —— 这个参数对当前配置没有影响。');
+  }
+  note.innerHTML = msgs.join('<br>');
+}
+
+/* 循环数据的迷你柱状图：直观看出一轮里哪几回合输出高 */
+function renderLoopBars(){
+  ["loop1", "loop2", "loop3"].forEach(key => {
+    const box = $(key + "bars");
+    if(!box) return;
+    const vals = (S[key] || []).map(num);
+    const max = Math.max.apply(null, [1].concat(vals.map(v => Math.abs(v))));
+    const bars = vals.map((v, i) => {
+      const pct = Math.max(2, Math.round(Math.abs(v) / max * 100));
+      return '<i style="height:' + pct + '%" title="' + roundLabel(key, i) + '：' + fmt(v) + '"></i>';
+    }).join("");
+    const pts = vals.map((v, i) => {
+      const pct = Math.max(2, Math.min(100, Math.abs(v) / max * 100));
+      return (i + 0.5).toFixed(2) + ',' + (100 - pct).toFixed(2);
+    }).join(" ");
+    box.innerHTML = bars
+      + '<svg class="loopline" viewBox="0 0 6 100" preserveAspectRatio="none" aria-hidden="true">'
+      + '<polyline points="' + pts + '" vector-effect="non-scaling-stroke"/></svg>';
+  });
+}
+
+/* 伤害构成：逐币堆叠条 */
+function renderComposition(){
+  const box = $("composeChart");
+  if(!box) return;
+  const rows = R.rows.filter(r => r.active);
+  if(!rows.length){
+    box.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:4px 0">尚未启用任何硬币。</div>';
+    return;
+  }
+  const parts = rows.map(r => {
+    const base  = Math.max(0, num(r.J));
+    const extra = Math.max(0, num(r.Nv));
+    const fixed = Math.max(0, num(r.fixed) * num(S.capacity));
+    return {r:r, base:base, extra:extra, fixed:fixed, total:Math.max(0, num(r.O))};
+  });
+  /* 分母是「本技能总伤害」，所以条长直接就是该硬币的伤害占比 */
+  const sumAll = parts.reduce((s, p) => s + p.total, 0);
+  const base0 = sumAll > 0 ? sumAll : 1;
+
+  box.innerHTML = parts.map(p => {
+    const pct = p.total / base0 * 100;
+    const segSum = p.base + p.extra + p.fixed;
+    const k = segSum > 0 ? pct / segSum : 0;      // 让三段宽度之和正好等于 pct
+    const w = v => v * k;
+    const b = w(p.base), e = w(p.extra), f = w(p.fixed);
+    const share = v => (v / base0 * 100).toFixed(1) + '%';
+    let inner = '';
+    if(b > 0.01) inner += '<span class="seg-base" style="width:' + b.toFixed(3) + '%" title="基础伤害 ' + fmt(p.base) + '（' + share(p.base) + '）">' + (b >= 9 ? '<em>' + fmt(p.base) + '</em>' : '') + '</span>';
+    if(e > 0.01) inner += '<span class="seg-extra" style="width:' + e.toFixed(3) + '%" title="追伤 ' + fmt(p.extra) + '（' + share(p.extra) + '）">' + (e >= 9 ? '<em>' + fmt(p.extra) + '</em>' : '') + '</span>';
+    if(f > 0.01) inner += '<span class="seg-fixed" style="width:' + f.toFixed(3) + '%" title="固定追伤 ' + fmt(p.fixed) + '（' + share(p.fixed) + '）">' + (f >= 9 ? '<em>' + fmt(p.fixed) + '</em>' : '') + '</span>';
+    const parts = [p.base, p.extra, p.fixed].filter(v => v > 0).map(v => fmt(v)).join('·');
+    return '<div class="crow' + (p.total <= 0 ? ' zero' : '') + '">'
+      + '<div class="cl">' + esc(p.r.label) + '</div>'
+      + '<div class="cbar">' + inner + '</div>'
+      + '<div class="cv"><b>' + fmt(p.total) + '</b>'
+      + '<span class="pct">' + pct.toFixed(1) + '%</span>'
+      + '<span class="parts">' + (parts || '—') + '</span></div>'
+      + '</div>';
+  }).join('');
+}
+
+function renderDetail(){
+  let h = "";
+  R.rows.forEach(r => {
+    if(!r.active) return;
+    h += "<tr>"
+      + '<td class="c"><b>'+esc(r.label)+'</b></td>'
+      + '<td class="c">'+(r.isReroll?'<span style="color:#8b5a00">重投</span>':'<span style="color:#2e7d32">硬币</span>')+'</td>'
+      + '<td class="c">'+fmt(r.N)+'</td>'
+      + '<td>'+fmt(r.critRate*100,2)+'%</td>'
+      + '<td>'+fmt(r.critPart,2)+'</td>'
+      + '<td>'+fmt(num(S.z1),2)+'</td>'
+      + '<td>'+fmt(R.levelMod,6)+'</td>'
+      + '<td class="raw">'+fmt(r.fRaw,6)+'</td>'
+      + '<td><b>'+fmt(r.F,2)+'</b></td>'
+      + '<td>'+fmt(r.m1,2)+'</td>'
+      + '<td>'+fmt(r.m2,2)+'</td>'
+      + '<td>'+fmt(r.sumH)+'</td>'
+      + '<td>'+fmt(r.sumI)+'</td>'
+      + '<td>'+fmt(r.powerBase,0)+'</td>'
+      + '<td>'+fmt(r.mult,6)+'</td>'
+      + '<td>'+fmt(num(S.capacity),0)+'</td>'
+      + '<td class="raw">'+fmt(r.rawJ,4)+'</td>'
+      + '<td class="loss">'+fmt(r.loss,4)+'</td>'
+      + '<td><b>'+fmt(r.J)+'</b></td>'
+      + '<td class="raw">'+(r.extraRaw===null?'—':fmt(r.extraRaw,4))+'</td>'
+      + '<td>'+fmt(r.Nv)+'</td>'
+      + '<td>'+fmt(r.fixedPart,0)+'</td>'
+      + '<td><b style="color:var(--sumTxt)">'+fmt(r.O)+'</b></td>'
+      + "</tr>";
+  });
+  $("detailBody").innerHTML = h || '<tr><td colspan="23" class="c" style="color:var(--muted);padding:14px">尚未启用任何硬币 —— 请把「硬币数量」设为 1 以上</td></tr>';
+  renderFormula();
+}
+
+/* 公式代入：逐硬币展示「数字代进公式」后的算式 */
+function renderFormula(){
+  const box = $("formulaBody");
+  if(!box) return;
+  const shown = R.rows.filter(r => r.active);
+  if(!shown.length){
+    box.innerHTML = '<div style="color:var(--muted);font-size:12px">尚未启用任何硬币。</div>';
+    return;
+  }
+  box.innerHTML = shown.map(r => {
+    const tag = r.isReroll ? ' <span style="color:#8b5a00;font-weight:700">重投</span>' : '';
+    return '<div class="fcoin">'
+      + '<div class="ft">' + esc(r.label) + tag + '　威力序号 N = ' + fmt(r.N) + '</div>'
+      + '<div class="fl"><b>单币第一乘区</b>　' + esc(r.exprF) + '</div>'
+      + '<div class="fl"><b>不计算追伤伤害</b>　' + esc(r.exprJ) + '</div>'
+      + '<div class="fl"><b>伤害数值</b>　' + esc(r.exprO) + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+/* 把 state 写回所有输入控件 */
+/* 让技能下拉跟随当前技能名：命中预设就选中，否则显示「自定义」 */
+function syncSkillPick(){
+  const sel = $("skillPick");
+  if(!sel) return;
+  const v = S.skillName || "";
+  let hit = "";
+  for(let i = 0; i < sel.options.length; i++){
+    if(sel.options[i].value && sel.options[i].value === v){ hit = v; break; }
+  }
+  sel.value = hit;
+}
+
+function syncInputs(){
+  document.querySelectorAll("[data-bind]").forEach(el => {
+    const v = getByPath(el.dataset.bind);
+    if(el.type === "checkbox") el.checked = !!v;
+    else el.value = (v === null || v === undefined) ? "" : v;
+  });
+}
+function getByPath(p){
+  return p.split(".").reduce((o,k) => (o == null ? undefined : o[k]), S);
+}
+function setByPath(p, v){
+  const parts = p.split("."); let o = S;
+  for(let i = 0; i < parts.length - 1; i++) o = o[parts[i]];
+  o[parts[parts.length-1]] = v;
+}
+
+/* ================= 本地存储 ================= */
+let storeOK = true;
+let storeErr = "";                 // 最近一次存储错误的原文，供「存储自检」显示
+
+function lsGet(k){
+  try{ return localStorage.getItem(k); }
+  catch(e){ storeOK = false; storeErr = e.name + ": " + e.message; return null; }
+}
+/* 配额写满时，把档案列表减半后重试，尽量保住最近的存档而不是直接失败 */
+function shrinkArchivesAndRetry(k, v){
+  if(k !== LS_ARCH) return false;
+  let list;
+  try{ list = JSON.parse(v); }catch(e){ return false; }
+  if(!Array.isArray(list) || list.length < 2) return false;
+  let keep = Math.floor(list.length / 2);
+  while(keep >= 1){
+    try{
+      localStorage.setItem(k, JSON.stringify(list.slice(0, keep)));
+      return true;
+    }catch(e2){ keep = Math.floor(keep / 2); }
+  }
+  return false;
+}
+function lsSet(k, v){
+  try{ localStorage.setItem(k, v); return true; }
+  catch(e){
+    storeErr = e.name + ": " + e.message;
+    // 配额超限：QuotaExceededError（Chrome/Edge 也可能给 code 22 / 1014）
+    const quota = (e && (e.name === "QuotaExceededError"
+                      || e.name === "NS_ERROR_DOM_QUOTA_REACHED"
+                      || e.code === 22 || e.code === 1014));
+    if(quota && shrinkArchivesAndRetry(k, v)){
+      toast("本地存储已满，已自动只保留最近的存档", "err");
+      return true;
+    }
+    storeOK = false;
+    $("storeWarn").classList.add("on");
+    return false;
+  }
+}
+
+/* 存储自检：把真实原因摊开，方便判断到底是哪一环出问题 */
+function storageDiag(){
+  const lines = [];
+  lines.push("页面协议：" + location.protocol + "（" + (location.origin || "null") + "）");
+  let ok = false, err = "";
+  try{ localStorage.setItem("__diag", "1"); localStorage.removeItem("__diag"); ok = true; }
+  catch(e){ err = e.name + " :: " + e.message; }
+  lines.push("localStorage：" + (ok ? "可用" : "不可用 —— " + err));
+  let used = 0, n = 0;
+  try{
+    for(const k in localStorage){
+      if(Object.prototype.hasOwnProperty.call(localStorage, k)){
+        used += (localStorage.getItem(k) || "").length + k.length;
+        n++;
+      }
+    }
+  }catch(e){}
+  lines.push("已用空间：约 " + (used / 1024).toFixed(1) + " KB（" + n + " 个键）");
+  lines.push("存档数量：" + loadArchives().length + " 个");
+  lines.push("最近一次错误：" + (storeErr || "无"));
+  return lines;
+}
+
+let saveTimer = null;
+function autosave(){
+  if(!storeOK) return;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => lsSet(LS_CUR, JSON.stringify(S)), 350);
+}
+function loadArchives(){
+  const raw = lsGet(LS_ARCH);
+  if(!raw) return [];
+  try{ const a = JSON.parse(raw); return Array.isArray(a) ? a : []; }catch(e){ return []; }
+}
+function writeArchives(list){
+  /* 必须把 lsSet 的结果返回出去：调用方靠它判断是否成功。
+     早期版本这里漏了 return，导致存档实际写入成功、却永远提示失败。 */
+  return lsSet(LS_ARCH, JSON.stringify(list));
+}
+
+/* ================= 存档 UI ================= */
+let archSel = new Set();          // 待批量删除的档案 id
+
+/* 同步「已选 N 个 / 全选 / 删除按钮」的状态 */
+function updateSelUI(){
+  const n = archSel.size;
+  const cnt = $("archSelCount");
+  if(cnt) cnt.textContent = "已选 " + n + " 个";
+  const del = $("btnDelSelected");
+  if(del) del.disabled = n === 0;
+  const cmp = $("btnCompareSel");
+  if(cmp) cmp.disabled = n !== 2;
+  const boxes = document.querySelectorAll("#archList input[data-pick]");
+  const checked = document.querySelectorAll("#archList input[data-pick]:checked").length;
+  const all = $("archSelAll");
+  if(all){
+    all.checked = boxes.length > 0 && checked === boxes.length;
+    all.indeterminate = checked > 0 && checked < boxes.length;
+  }
+}
+
+/* 重建角色筛选下拉（保留当前选择） */
+function rebuildCharFilter(list){
+  const sel = $("archFilter");
+  if(!sel) return;
+  const cur = sel.value;
+  const chars = Array.from(new Set(
+    list.map(a => String((a.state && a.state.character) || "").trim()).filter(Boolean)
+  )).sort();
+  sel.innerHTML = '<option value="">全部人格</option>'
+    + chars.map(c => '<option value="' + esc(c) + '">' + esc(c) + '</option>').join("");
+  sel.value = chars.indexOf(cur) >= 0 ? cur : "";
+}
+const collapsedFolders = new Set();
+let dragArchId = null;
+
+/* 循环存档卡片 */
+function loopCard(a){
+  const l = a.loops || {};
+  const sum = k => (l[k] || []).reduce((s, v) => s + num(v), 0);
+  return '<div class="arch arch-loop" data-id="'+esc(a.id)+'" draggable="true">'
+    + '<label class="pick" title="勾选后可批量删除"><input type="checkbox" data-pick="'+esc(a.id)+'"'
+    + (archSel.has(a.id) ? ' checked' : '') + '></label>'
+    + '<div class="grip" title="拖动排序">⋮⋮</div>'
+    + '<div style="flex:1 1 220px;min-width:160px">'
+    +   '<div class="nm">🔄 '+esc(a.name||"循环数据")+'</div>'
+    +   '<div class="meta">循环存档 · 存档于 '+esc(shortStamp(a.savedAt))+'</div>'
+    + '</div>'
+    + '<div class="nums">'
+    +   '<span>第一 <b>'+fmt(sum("loop1"))+'</b></span>'
+    +   '<span>第二 <b>'+fmt(sum("loop2"))+'</b></span>'
+    +   '<span>极限 <b>'+fmt(sum("loop3"))+'</b></span>'
+    + '</div>'
+    + '<div class="acts">'
+    +   '<button class="tiny primary" data-act="load">读取</button>'
+    +   '<button class="tiny" data-act="rename">重命名</button>'
+    +   '<button class="tiny warn" data-act="del">删除</button>'
+    + '</div>'
+    + '</div>';
+}
+
+/* 单条存档卡片 */
+function archCard(a){
+  if(a.type === "loop") return loopCard(a);
+  const r = a.result || {};
+  return '<div class="arch" data-id="'+esc(a.id)+'" draggable="true">'
+    + '<label class="pick" title="勾选后可批量删除"><input type="checkbox" data-pick="'+esc(a.id)+'"'
+    + (archSel.has(a.id) ? ' checked' : '') + '></label>'
+    + '<div class="grip" title="拖动排序">⋮⋮</div>'
+    + '<div style="flex:1 1 220px;min-width:160px">'
+    +   '<div class="nm">'+esc(a.name||"(未命名)")+'</div>'
+    +   '<div class="meta">'+((a.state&&a.state.character)?('<b style="color:var(--link)">「'+esc(a.state.character)+'」</b> '):'')+'存档于 '+esc(shortStamp(a.savedAt))+'</div>'
+    + '</div>'
+    + '<div class="nums">'
+    +   '<span>拼点 <b>'+fmt(r.clash!=null?r.clash:0)+'</b></span>'
+    +   '<span>总伤害 <b>'+fmt(r.total!=null?r.total:0)+'</b></span>'
+    +   '<span>硬币 <b class="loop-num">'+fmt((a.state&&a.state.coinCount)||0)+'</b></span>'
+    + '</div>'
+    + '<div class="acts">'
+    +   '<button class="tiny primary" data-act="load">读档</button>'
+    +   '<button class="tiny" data-act="compare">对比当前</button>'
+    +   '<button class="tiny" data-act="rename">重命名</button>'
+    +   '<button class="tiny" data-act="overwrite">用当前覆盖</button>'
+    +   '<button class="tiny" data-act="export1">导出</button>'
+    +   '<button class="tiny warn" data-act="del">删除</button>'
+    + '</div>'
+    + '</div>';
+}
+
+function renderArchives(){
+  const list = loadArchives();
+  const q = ($("archSearch").value || "").trim().toLowerCase();
+  const box = $("archList");
+  // 清掉已被删除的 id，避免计数虚高
+  const alive = new Set(list.map(a => a.id));
+  archSel.forEach(id => { if(!alive.has(id)) archSel.delete(id); });
+
+  rebuildCharFilter(list);
+  const cf = ($("archFilter") ? $("archFilter").value : "");
+  $("archCount").textContent = "共 " + list.length + " 个档案" + (cf ? "（筛选：" + cf + "）" : "");
+  const shown = list.filter(a => {
+    if(cf && String((a.state && a.state.character) || "") !== cf) return false;
+    if(!q) return true;
+    const hay = [
+      a.name, a.note, a.folder,
+      a.state && a.state.character,
+      a.state && a.state.skillName,
+      a.state && (a.state.coinCount + "币"),
+      a.type === "loop" ? "循环" : "技能"
+    ].filter(Boolean).join(" ").toLowerCase();
+    return hay.indexOf(q) >= 0;
+  });
+
+  // 排序
+  const srt = ($("archSort") && $("archSort").value) || "time";
+  shown.sort((x, y) => {
+    if(srt === "time")    return String(y.savedAt||"").localeCompare(String(x.savedAt||""));
+    if(srt === "timeAsc") return String(x.savedAt||"").localeCompare(String(y.savedAt||""));
+    if(srt === "total")   return ((y.result&&y.result.total)||0) - ((x.result&&x.result.total)||0);
+    if(srt === "clash")   return ((y.result&&y.result.clash)||0) - ((x.result&&x.result.clash)||0);
+    return 0;
+  });
+  if(!list.length){
+    box.innerHTML = '<div class="empty">还没有存档。填好一个技能后点顶部「💾 存档」，即可随时读档回看完整计算过程。</div>';
+    updateSelUI();
+    return;
+  }
+  if(!shown.length){
+    box.innerHTML = '<div class="empty">没有匹配「'+esc(q)+'」的档案（共 '+list.length+' 个）。</div>';
+    updateSelUI();
+    return;
+  }
+
+  // 按路径构建树，逐级展开
+  const root = { name:"", path:"", children:new Map(), items:[] };
+  shown.forEach(a => {
+    const parts = String(a.folder || "").split("/").filter(Boolean);
+    let node = root, p = "";
+    parts.forEach(seg => {
+      p = p ? p + "/" + seg : seg;
+      if(!node.children.has(seg)){
+        node.children.set(seg, { name:seg, path:p, children:new Map(), items:[] });
+      }
+      node = node.children.get(seg);
+    });
+    node.items.push(a);
+  });
+
+  const order = loadFolderOrder();
+
+  function countAll(n){
+    let c = n.items.length;
+    n.children.forEach(ch => { c += countAll(ch); });
+    return c;
+  }
+
+  function sortKids(n){
+    return Array.from(n.children.values()).sort((x, y) => {
+      const ix = order.indexOf(x.path), iy = order.indexOf(y.path);
+      if(ix >= 0 && iy >= 0) return ix - iy;
+      if(ix >= 0) return -1;
+      if(iy >= 0) return 1;
+      return x.name.localeCompare(y.name, "zh");
+    });
+  }
+
+  function renderNode(n, depth){
+    let out = "";
+    sortKids(n).forEach(ch => {
+      const closed = collapsedFolders.has(ch.path);
+      out += '<div class="archgroup" data-folder="' + esc(ch.path) + '">'
+        + '<div class="ghead' + (closed ? ' closed' : '') + '" data-gh="1" draggable="true"'
+        + ' style="margin-left:' + (depth * 18) + 'px">'
+        +   '<span class="ggrip" title="拖动调整顺序">⋮⋮</span>'
+        +   '<span class="gcaret">▾</span>'
+        +   '<span class="gname">' + esc(ch.name) + '</span>'
+        +   '<span class="gcount">' + countAll(ch) + '</span>'
+        +   '<span class="gacts">'
+        +     '<button class="tiny" data-act="renameFolder">重命名</button>'
+        +     '<button class="tiny warn" data-act="delFolder">删除</button>'
+        +   '</span>'
+        + '</div>';
+      if(!closed){
+        out += '<div class="gbody">';
+        out += renderNode(ch, depth + 1);
+        if(ch.items.length){
+          out += '<div class="gitems" style="margin-left:' + ((depth + 1) * 18) + 'px">'
+              + ch.items.map(archCard).join("") + '</div>';
+        }
+        out += '</div>';
+      }
+      out += '</div>';
+    });
+    return out;
+  }
+
+  let h = renderNode(root, 0);
+
+  // 未分类（根级直接存放的档案）
+  if(root.items.length){
+    const closed = collapsedFolders.has("");
+    h += '<div class="archgroup" data-folder="">'
+      + '<div class="ghead' + (closed ? ' closed' : '') + '" data-gh="1">'
+      +   '<span class="gcaret">▾</span>'
+      +   '<span class="gname">未分类</span>'
+      +   '<span class="gcount">' + root.items.length + '</span>'
+      + '</div>';
+    if(!closed){
+      h += '<div class="gbody"><div class="gitems">' + root.items.map(archCard).join("") + '</div></div>';
+    }
+    h += '</div>';
+  }
+
+  box.innerHTML = h;
+  updateSelUI();
+}
+
+function snapshotResult(){
+  const r = compute(S);
+  return {clash:r.clash, total:r.total,
+          finalBase:r.finalBase, finalCoin:r.finalCoin, levelDiff:r.levelDiff, activeCoins:r.activeCoins,
+          sumJ:r.sumJ, sumN:r.sumN, sumK:r.sumK};
+}
+/* 最近一次技能存档所在的文件夹；循环存档跟随它 */
+let currentFolder = "";
+const LOOP_KEYS = ["loop1","loop2","loop3","loop1c","loop2c","loop3c"];
+const LS_FOLDER_ORDER = "jingxi_folder_order_v1";
+let dragFolder = null;
+
+function loadFolderOrder(){
+  try{ return JSON.parse(localStorage.getItem(LS_FOLDER_ORDER) || "[]"); }catch(e){ return []; }
+}
+function saveFolderOrder(arr){
+  try{ localStorage.setItem(LS_FOLDER_ORDER, JSON.stringify(arr)); }catch(e){}
+}
+
+/* 循环存档固定放在「人格/循环」这一级作为母文件夹 */
+function resolveLoopFolder(){
+  const ch = (S.character || "").trim() || "未命名人格";
+  const parts = String(currentFolder || "").split("/");
+  if(parts.length >= 2 && parts[1] === "循环") return parts[0] + "/循环";
+  return ch + "/循环";
+}
+
+/* 循环模式下技能档案的子文件夹名 */
+function loopSubFolder(key){
+  return ({ loop1: "第一", loop2: "第二", loop3: "极限" })[key] || "其他";
+}
+
+function newArchive(name, note, folder){
+  return {id:"a"+Date.now().toString(36)+Math.random().toString(36).slice(2,7),
+          name:name, note:note||"", savedAt:nowStr(), folder:folder||"",
+          type:"skill",
+          state:(function(){
+            const st = JSON.parse(JSON.stringify(S));
+            LOOP_KEYS.forEach(k => { delete st[k]; });   // 循环数据不再随技能存档走
+            return st;
+          })(),
+          result:snapshotResult()};
+}
+function doSave(name, note, folder){
+  if(folder) currentFolder = folder;
+  const list = loadArchives();
+  list.unshift(newArchive(name, note, folder));
+  if(list.length > 500) list.length = 500;
+  if(writeArchives(list)){ renderArchives(); toast("已存档：" + name, "ok"); }
+  else toast("存档失败：浏览器本地存储不可用，请改用导出备份", "err");
+}
+let lastQuickSave = { sig: "", at: 0 };
+function quickSave(){
+  // 5 秒内重复存完全相同的内容没有意义，直接跳过
+  const sig = JSON.stringify(S);
+  const now = Date.now();
+  if(sig === lastQuickSave.sig && now - lastQuickSave.at < 5000){
+    toast("刚刚已存过相同内容，未重复保存", "err");
+    return;
+  }
+  lastQuickSave = { sig: sig, at: now };
+  const base = (S.skillName || "").trim() || "未命名技能";
+  const char = (S.character || "").trim() || "未命名人格";
+  doSave(buildArchiveName(""), "", char + "/伤转");
+}
+
+/* 对比弹层 */
+function showCompare(a){
+  const cur = snapshotResult();
+  const old = a.result || {};
+  const keys = [["clash","拼点点数"],["total","总伤害"],["finalBase","最终基础威力"],["finalCoin","最终硬币威力"],
+                ["levelDiff","等级差"],["activeCoins","启用硬币数"],["sumJ","不计算追伤合计"],["sumN","追伤数值合计"],
+                ["loop1","第一循环"],["loop2","第二循环"],["loop12","两轮循环"],["loop3","极限循环"]];
+  const rows = keys.map(([k,t]) => {
+    const ov = old[k], cv = cur[k];
+    const diff = (typeof ov === "number" && typeof cv === "number") ? cv - ov : null;
+    const mark = diff === null ? "" : (diff === 0 ? '<span class="dim">＝</span>'
+      : '<span style="color:'+(diff>0?"#2e7d32":"#c0392b")+';font-weight:800">'+(diff>0?"+":"")+fmt(diff)+'</span>');
+    return "<tr><td style='padding:0 8px;font-weight:700'>"+t+"</td>"
+      + "<td style='padding:0 8px'>"+fmt(ov)+"</td>"
+      + "<td style='padding:0 8px;font-weight:700'>"+fmt(cv)+"</td>"
+      + "<td style='padding:0 8px'>"+mark+"</td></tr>";
+  }).join("");
+  openModal("对比：「"+(a.name||"")+"」 vs 当前输入",
+    "<div class='tblwrap'><table style='font-size:12px'><thead><tr>"
+    + "<th>项目</th><th>存档值</th><th>当前值</th><th>差值</th>"
+    + "</tr></thead><tbody>"+rows+"</tbody></table></div>",
+    null, true);
+}
+
+/* ================= 弹层 ================= */
+let modalOk = null;
+function openModal(title, bodyHTML, onOk, readOnly){
+  $("mTitle").textContent = title;
+  document.querySelector(".modal .mb").innerHTML = bodyHTML;
+  $("mOk").style.display = readOnly ? "none" : "";
+  $("mCancel").textContent = readOnly ? "关闭" : "取消";
+  modalOk = onOk;
+  $("overlay").classList.add("on");
+  if(!readOnly){
+    const f = document.querySelector(".modal .mb input[type=text], .modal .mb textarea");
+    if(f){ try{ f.focus(); f.select && f.select(); }catch(e){} }
+  }
+}
+function closeModal(){ $("overlay").classList.remove("on"); modalOk = null; }
+function saveDialog(title, name, note, cb){
+  openModal(title,
+      '<label for="mName">档案名称</label><input type="text" id="mName" value="'+esc(name||"")+'">'
+    + '<label for="mNote">备注（可选）</label><textarea id="mNote">'+esc(note||"")+'</textarea>',
+    () => { cb($("mName").value.trim() || "(未命名)", $("mNote").value.trim()); });
+}
+
+/* ================= 提示 ================= */
+let toastTimer = null;
+function toast(msg, kind){
+  const t = $("toast");
+  t.textContent = msg;
+  t.className = "on" + (kind ? " " + kind : "");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = ""; }, 2600);
+}
+
+/* ================= 复原 ================= */
+/* 清空参数扫描的图表、表格、结论与本地缓存 */
+function clearSweep(){
+  lastSweep = null;
+  const chart = $("sweepChart");
+  if(chart){
+    chart.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:18px;text-align:center">'
+      + '设置区间后点「开始扫描」。结果只做推演，不会改动你填的数值。</div>';
+  }
+  const tbl = $("sweepTable");
+  if(tbl) tbl.innerHTML = "";
+  const note = $("sweepNote");
+  if(note) note.innerHTML = "";
+  try{ localStorage.removeItem(LS_SWEEP); }catch(e){}
+}
+
+function resetAll(){
+  askConfirm("resetAll", "全部复原",
+    "将清空所有内容：技能参数、硬币参数、全局设置、三组循环数据，以及参数扫描结果。\n\n人格名与技能名也会清空，未存档的内容会丢失。\n\n若只想重置参数、保留循环数据，请改用「重置参数」。",
+    () => {
+      pushUndo(null, true);
+      S = defaultState();
+      syncInputs(); syncSkillPick(); refresh(); autosave(); renderArchives();
+      clearSweep();
+      toast("已全部复原", "ok");
+    });
+}
+
+/* 重置参数：技能参数 + 硬币参数 + 全局设置，保留人格名、技能名与循环数据 */
+/* 实际执行重置：保留人格名、技能名、敌方等级与循环数据 */
+function doResetParams(){
+  pushUndo(null, true);
+  const next = defaultState();
+  next.character  = S.character;
+  next.skillName  = S.skillName;
+  next.enemyLevel = S.enemyLevel;      // 敌方等级属于战斗环境，不随参数重置
+  next.loop1 = (S.loop1 || []).slice();
+  next.loop2 = (S.loop2 || []).slice();
+  next.loop3 = (S.loop3 || []).slice();
+  next.loop1c = (S.loop1c || []).slice();
+  next.loop2c = (S.loop2c || []).slice();
+  next.loop3c = (S.loop3c || []).slice();
+  S = next;
+  syncInputs(); syncSkillPick(); refresh(); autosave();
+  clearSweep();
+}
+
+function doLightReset(){
+  pushUndo(null, true);
+  S.coins = Array.from({length: COIN_ROWS}, blankCoin);
+  syncInputs(); refresh(); autosave();
+}
+
+function resetParams(){
+  askConfirm("resetParams", "重置参数",
+    "将把技能参数、硬币参数、全局设置恢复为初始值。\n\n人格名、技能名、敌方等级与三组循环数据会保留。\n\n（之后仍可用 Ctrl+Z 撤销）",
+    () => {
+      doResetParams();
+      toast("已重置参数（人格、技能名、敌方等级与循环数据已保留）", "ok");
+    });
+}
+
+/* ================= 导入导出 ================= */
+function download(filename, text, mime){
+  const blob = new Blob([text], {type: mime || "application/json;charset=utf-8"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 300);
+}
+/* 把逐硬币结果导出为 CSV（带 BOM，便于表格软件识别中文） */
+function exportCsv(){
+  const r = compute(S);
+  const rows = r.rows.filter(x => x.active);
+  if(!rows.length){ toast("尚未启用任何硬币，没有可导出的数据", "err"); return; }
+  const head = ["行","类别","威力序号N","呼吸法强度","暴击部分","单币第一乘区","单币第二乘区",
+                "单币硬币威力","终币特殊威力","不计算追伤伤害","固定追伤","是否追伤","追伤系数",
+                "追伤数值","伤害数值"];
+  const lines = [head.join(",")];
+  rows.forEach(x => {
+    const cells = [
+      x.label, x.isReroll ? "重投" : "硬币", fmt(x.N), fmt(x.breath), fmt(x.critPart, 4),
+      fmt(x.F, 2), fmt(x.G), fmt(x.sumH), fmt(x.sumI), fmt(x.J), fmt(x.fixed),
+      x.extra, fmt(x.coef), fmt(x.Nv), fmt(x.O)
+    ];
+    lines.push(cells.map(v => {
+      const s = String(v == null ? "" : v);
+      return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    }).join(","));
+  });
+  lines.push("");
+  lines.push(["合计","","","","","","","","",fmt(r.sumJ),fmt(r.sumK),"","",fmt(r.sumN),fmt(r.sumO)].join(","));
+  lines.push(["拼点点数", fmt(r.clash)].join(","));
+  lines.push(["总伤害", fmt(r.total)].join(","));
+  lines.push(["第一循环·启动轮", fmt(r.loop1)].join(","));
+  lines.push(["第二循环·启动后", fmt(r.loop2)].join(","));
+  lines.push(["两轮循环总和", fmt(r.loop12)].join(","));
+  lines.push(["极限循环·上限", fmt(r.loop3)].join(","));
+  lines.push("");
+  lines.push(["循环明细","回合","伤害","拼点"].join(","));
+  ["loop1","loop2","loop3"].forEach((k, gi) => {
+    const arr = S[k] || [], arrc = S[k + "c"] || [];
+    for(let i = 0; i < arr.length; i++){
+      const c = arrc[i];
+      lines.push([LOOP_TARGET_NAME[k], roundLabel(k, i), fmt(arr[i]),
+                  (c === null || c === undefined || c === "") ? "不参与" : fmt(c)].join(","));
+    }
+    lines.push([LOOP_TARGET_NAME[k] + " 平均拼点", "", "", fmt(loopAvg(k))].join(","));
+  });
+
+  const base = [S.character, S.skillName].filter(Boolean).join("-") || "技能";
+  const name = base.replace(/[\\/:*?"<>|]/g, "_");
+  download("镜息演算-" + name + "-" + stamp() + ".csv", "\ufeff" + lines.join("\r\n"),
+           "text/csv;charset=utf-8");
+  toast("已导出 CSV", "ok");
+}
+function exportAll(){
+  const payload = {app:"镜息演算 · 边狱巴士技能伤害计算器", appVersion:APP_VERSION, ver:STATE_VER, exportedAt:nowStr(),
+                   current:S, archives:loadArchives()};
+  download("镜息演算备份-" + stamp() + ".json", JSON.stringify(payload, null, 2));
+  toast("已导出备份 JSON", "ok");
+}
+function importFile(file){
+  const fr = new FileReader();
+  fr.onload = () => {
+    let d;
+    try{ d = JSON.parse(String(fr.result)); }catch(e){ toast("导入失败：不是有效的 JSON 文件", "err"); return; }
+    if(d && Array.isArray(d.archives)){
+      const mode = confirm("检测到完整备份（含 " + d.archives.length + " 个存档）。\n\n「确定」= 合并到现有存档（同名保留两份）\n「取消」= 只恢复备份里的「当前输入」，不动存档");
+      if(mode){
+        const list = loadArchives();
+        const ids = new Set(list.map(a => a.id));
+        d.archives.forEach(a => { if(a && !ids.has(a.id)) list.push(a); });
+        writeArchives(list); renderArchives();
+        toast("已合并 " + d.archives.length + " 个存档", "ok");
+      }
+      if(d.current){ pushUndo(null, true); S = normalize(d.current); syncInputs(); refresh(); autosave(); updateUndoUI(); }
+    } else if(d && (d.coins || d.state)){
+      pushUndo(null, true);
+      S = normalize(d.state || d);
+      syncInputs(); refresh(); autosave(); updateUndoUI();
+      toast("已恢复单个档案", "ok");
+    } else {
+      toast("导入失败：无法识别的文件结构", "err");
+    }
+  };
+  fr.onerror = () => toast("读取文件失败", "err");
+  fr.readAsText(file, "utf-8");
+}
+
+/* ================= 玻璃碎片（表头 + 背景） ================= */
+function buildHeaderShards(){
+  const box = $("hdShards");
+  if(!box) return;
+  let h = "";
+  for(let i = 0; i < 7; i++){
+    const w = 10 + Math.random() * 26;
+    const hh = 8 + Math.random() * 20;
+    const left = 6 + Math.random() * 88;
+    const top = 8 + Math.random() * 78;
+    const dur = (5 + Math.random() * 5).toFixed(1);
+    const dly = (Math.random() * 8).toFixed(1);
+    const r = Math.round(Math.random() * 50 - 25);
+    h += '<i style="left:' + left.toFixed(1) + '%;top:' + top.toFixed(1) + '%;'
+       + '--w:' + w.toFixed(0) + 'px;--h:' + hh.toFixed(0) + 'px;'
+       + '--dur:' + dur + 's;--dly:' + dly + 's;--r:' + r + 'deg"></i>';
+  }
+  box.innerHTML = h;
+}
+
+/* 右侧锚点导航：跟随滚动高亮当前板块 */
+function buildAnchorNav(){
+  const nav = $("anchorNav");
+  if(!nav) return;
+  const cards = Array.prototype.slice.call(document.querySelectorAll("main .card"));
+  nav.innerHTML = cards.map((c, i) => {
+    if(!c.id) c.id = "sec-" + i;
+    const h2 = c.querySelector("h2");
+    let t = "";
+    if(h2){
+      t = h2.textContent.replace(/[「」]/g, "").trim().split("\n")[0].slice(0, 8);
+    }
+    return '<a href="#' + c.id + '" data-i="' + i + '" title="' + t + '"></a>';
+  }).join("");
+
+  if(!("IntersectionObserver" in window)) return;
+  const links = Array.prototype.slice.call(nav.querySelectorAll("a"));
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(en => {
+      if(en.isIntersecting){
+        const i = cards.indexOf(en.target);
+        links.forEach((a, j) => a.classList.toggle("on", j === i));
+      }
+    });
+  }, { rootMargin: "-45% 0px -45% 0px" });
+  cards.forEach(c => io.observe(c));
+}
+
+/* 深海感：上浮气泡 + 闪烁光点 */
+function buildBgBubbles(){
+  const box = $("bgBubbles");
+  if(!box) return;
+  let h = "";
+  for(let i = 0; i < 11; i++){
+    const size = 5 + Math.random() * 22;
+    h += '<i class="bubble" style="left:' + (Math.random() * 96).toFixed(1) + '%;'
+       + '--w:' + size.toFixed(0) + 'px;'
+       + '--dur:' + (16 + Math.random() * 18).toFixed(1) + 's;'
+       + '--dly:' + (Math.random() * 20).toFixed(1) + 's"></i>';
+  }
+  box.innerHTML = h;
+}
+function buildBgSparks(){
+  const box = $("bgSparks");
+  if(!box) return;
+  let h = "";
+  for(let i = 0; i < 20; i++){
+    const size = 1.6 + Math.random() * 3.2;
+    h += '<i class="spark" style="left:' + (Math.random() * 98).toFixed(1) + '%;'
+       + 'top:' + (Math.random() * 96).toFixed(1) + '%;'
+       + '--s:' + size.toFixed(1) + 'px;'
+       + '--dur:' + (3 + Math.random() * 4.5).toFixed(1) + 's;'
+       + '--dly:' + (Math.random() * 7).toFixed(1) + 's"></i>';
+  }
+  box.innerHTML = h;
+}
+
+/* 给每张卡片挂上：鼠标光晕 / 玻璃碎片 / 掠过光带 */
+function decorateCards(){
+  Array.prototype.forEach.call(document.querySelectorAll(".card"), card => {
+    if(card.querySelector(":scope > .glow")) return;   // 已装饰过
+
+    const glow = document.createElement("div");
+    glow.className = "glow";
+    card.appendChild(glow);
+
+    const sh = document.createElement("div");
+    sh.className = "cshards";
+    let h = "";
+    // 按卡片面积决定碎片数量：大卡片给足，小卡片保持克制
+    const cw = card.offsetWidth || 420;
+    const ch = card.offsetHeight || 220;
+    const n = Math.min(20, Math.max(4, Math.round((cw * ch) / 70000)));
+    for(let i = 0; i < n; i++){
+      const w = 8 + Math.random() * 22;
+      const hh = 6 + Math.random() * 16;
+      h += '<i style="left:' + (5 + Math.random() * 88).toFixed(1) + '%;top:'
+         + (10 + Math.random() * 76).toFixed(1) + '%;'
+         + '--w:' + w.toFixed(0) + 'px;--h:' + hh.toFixed(0) + 'px;'
+         + '--dur:' + (6 + Math.random() * 6).toFixed(1) + 's;'
+         + '--dly:' + (Math.random() * 8).toFixed(1) + 's;'
+         + '--r:' + Math.round(Math.random() * 50 - 25) + 'deg"></i>';
+    }
+    sh.innerHTML = h;
+    card.appendChild(sh);
+
+    card.addEventListener("mousemove", e => {
+      const r = card.getBoundingClientRect();
+      glow.style.setProperty("--mx", (e.clientX - r.left).toFixed(0) + "px");
+      glow.style.setProperty("--my", (e.clientY - r.top).toFixed(0) + "px");
+    }, {passive:true});
+  });
+}
+
+/* 抽屉内的碎片 */
+function buildDrawerShards(){
+  const box = $("drawerShards");
+  if(!box) return;
+  let h = "";
+  for(let i = 0; i < 13; i++){
+    const w = 12 + Math.random() * 30;
+    const hh = 9 + Math.random() * 22;
+    h += '<i style="left:' + (4 + Math.random() * 90).toFixed(1) + '%;top:'
+       + (6 + Math.random() * 86).toFixed(1) + '%;'
+       + '--w:' + w.toFixed(0) + 'px;--h:' + hh.toFixed(0) + 'px;'
+       + '--dur:' + (6 + Math.random() * 7).toFixed(1) + 's;'
+       + '--dly:' + (Math.random() * 8).toFixed(1) + 's;'
+       + '--r:' + Math.round(Math.random() * 60 - 30) + 'deg"></i>';
+  }
+  box.innerHTML = h;
+}
+
+let bgShards = [], bgTick = false;
+function buildBgShards(){
+  const layer = $("bgShardHost");
+  if(!layer) return;
+  layer.innerHTML = "";
+  bgShards = [];
+  for(let i = 0; i < 9; i++){
+    const wrap = document.createElement("div");
+    wrap.className = "bg-shard-wrap";
+    wrap.style.left = (Math.random() * 90).toFixed(1) + "%";
+    wrap.style.top = (Math.random() * 88).toFixed(1) + "%";
+    // 加大尺寸：隔着毛玻璃模糊后依然能看出轮廓
+    wrap.style.setProperty("--w", (70 + Math.random() * 150).toFixed(0) + "px");
+    wrap.style.setProperty("--h", (55 + Math.random() * 115).toFixed(0) + "px");
+    wrap.style.setProperty("--fd", (9 + Math.random() * 9).toFixed(1) + "s");
+    const sp = 0.10 + Math.random() * 0.26;
+    wrap.dataset.speed = sp.toFixed(2);
+    wrap.innerHTML = '<i class="bg-shard"></i>';
+    layer.appendChild(wrap);
+    bgShards.push(wrap);
+  }
+  updateBgShards();
+}
+function updateBgShards(){
+  const y = window.scrollY || window.pageYOffset || 0;
+  for(let i = 0; i < bgShards.length; i++){
+    const el = bgShards[i];
+    const sp = parseFloat(el.dataset.speed) || 0.2;
+    // 负号：页面下滚时碎片向上浮，速度慢于页面 -> 产生纵深
+    el.style.transform = "translate3d(0," + (-y * sp).toFixed(1) + "px,0)";
+  }
+}
+
+/* ================= 开场动画 ================= */
+const LS_BOOT = "jingxi_boot_v1";
+let bootPlayed = false;
+
+function bootEnabled(){
+  try{ return localStorage.getItem(LS_BOOT) !== "0"; }catch(e){ return true; }
+}
+function makeShards(){
+  const box = $("bootShards");
+  if(!box) return;
+  let h = "";
+  for(let i = 0; i < 20; i++){
+    const ang = Math.random() * Math.PI * 2;
+    const dist = 150 + Math.random() * 340;
+    const x = Math.cos(ang) * dist;
+    const y = Math.sin(ang) * dist;
+    const w = 8 + Math.random() * 30;
+    const hh = 7 + Math.random() * 24;
+    const r = Math.round(Math.random() * 260 - 130);
+    const d = (0.28 + Math.random() * 0.45).toFixed(2);
+    const s = (0.35 + Math.random() * 0.85).toFixed(2);
+    h += '<i class="shard" style="--x:' + x.toFixed(0) + 'px;--y:' + y.toFixed(0) + 'px;'
+       + '--w:' + w.toFixed(0) + 'px;--h:' + hh.toFixed(0) + 'px;--r:' + r + 'deg;'
+       + '--d:' + d + 's;--s:' + s + '"></i>';
+  }
+  box.innerHTML = h;
+}
+function endBoot(){
+  const boot = $("boot");
+  if(!boot || boot.classList.contains("hide")) return;
+  boot.classList.add("hide");
+  setTimeout(() => { boot.style.display = "none"; }, 720);
+}
+function playBoot(){
+  const boot = $("boot");
+  if(!boot) return;
+  bootPlayed = true;
+  boot.style.display = "flex";
+  boot.classList.add("on");
+  makeShards();
+  setTimeout(endBoot, 1900);          // 自动结束
+  boot.addEventListener("click", endBoot);   // 点一下可跳过
+}
+
+/* ================= 深浅色主题 ================= */
+const LS_THEME = "jingxi_theme_v1";
+const LS_SWEEP = "jingxi_sweep_v1";      /* 最近一次参数扫描，刷新页面后仍可回看 */
+let lastSweep = null;              // 记住最近一次扫描，切换主题时重绘折线图
+
+/* 2.0 改为暗色默认：无 data-theme 即暗色，浅色需显式 data-theme="light" */
+function currentTheme(){
+  return document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
+}
+function applyTheme(t){
+  if(t === "light") document.documentElement.setAttribute("data-theme", "light");
+  else document.documentElement.removeAttribute("data-theme");
+  const b = $("btnTheme");
+  if(b) b.textContent = (t === "light" ? "🌙 深色" : "☀️ 浅色");
+  // 折线图的线稿颜色是 JS 画上去的，主题一变就要重绘才能跟随
+  if(lastSweep) renderSweep(lastSweep.data, lastSweep.key);
+}
+function toggleTheme(){
+  const next = currentTheme() === "dark" ? "light" : "dark";
+  applyTheme(next);
+  try{ localStorage.setItem(LS_THEME, next); }catch(e){}
+}
+
+/* ================= 循环模式 ================= */
+const LOOP_TARGET_NAME = { loop1: "第一循环", loop2: "第二循环", loop3: "极限循环" };
+let loopModeIdx = 0;                 // 当前组内回合索引 0..5
+
+function loopModeOn(){
+  const cb = $("loopModeOn");
+  return !!(cb && cb.checked);
+}
+function loopTargetKey(){
+  const sel = $("loopTarget");
+  return (sel && sel.value) || "loop3";
+}
+function updateLoopModeUI(){
+  const on = loopModeOn();
+  const bar = $("loopModeBar");
+  if(bar) bar.classList.toggle("active", on);
+  const tx = $("loopTx");
+  if(tx) tx.textContent = "T" + (loopModeIdx + 1);
+  const btn = $("btnNextT");
+  if(btn) btn.disabled = !on;
+  const prev = $("btnPrevT");
+  if(prev) prev.disabled = !on || loopModeIdx <= 0;
+  const sv = $("btnLoopSave");
+  if(sv) sv.disabled = !on;
+}
+
+/* 点「下一T」：把当前结果写入目标组的当前回合，存一份档，再重置参数 */
+function nextTurn(){
+  if(!loopModeOn()) return;
+  const key = loopTargetKey();
+  const idx = loopModeIdx;
+  const r = compute(S);
+
+  pushUndo(null, true);
+  if(!Array.isArray(S[key])) S[key] = Array(LOOP_LEN).fill(0);
+  if(!Array.isArray(S[key + "c"])) S[key + "c"] = Array(LOOP_LEN).fill(null);
+  S[key][idx] = r.total;
+  S[key + "c"][idx] = r.clash;
+
+  // 存一份「循环」档，便于回看每一回合的配置
+  const label = LOOP_TARGET_NAME[key] + " T" + (idx + 1);
+  const nm = buildArchiveName("T" + (idx + 1));
+  const charName = (S.character || "").trim() || "未命名人格";
+  doSave(nm, "循环模式自动存档", charName + "/循环/" + loopSubFolder(key));
+
+  // 轻重置：只清硬币明细，保留技能参数与全局设置
+  doLightReset();
+
+  loopModeIdx = idx + 1;
+  if(loopModeIdx >= LOOP_LEN){
+    loopModeIdx = 0;
+    const sel = $("loopTarget");
+    if(key === "loop1"){
+      if(sel) sel.value = "loop2";
+      toast("第一循环已完成，已切换到第二循环", "ok");
+    } else if(key === "loop2"){
+      toast("第二循环已完成", "ok");
+    } else {
+      toast("极限循环已完成", "ok");
+    }
+  } else {
+    toast("已记录 " + label + "，可以继续下一回合", "ok");
+  }
+  updateLoopModeUI();
+}
+
+/* ================= 存档抽屉 ================= */
+/* 把表头高度写进 --hd-h，供抽屉与遮罩定位使用 */
+function syncHeaderVar(){
+  const hd = document.querySelector("header");
+  const h = hd ? Math.round(hd.getBoundingClientRect().height) : 0;
+  document.documentElement.style.setProperty("--hd-h", h + "px");
+}
+
+function openDrawer(){
+  syncHeaderVar();                 // 每次打开都校准，确保不被表头压住
+  renderArchives();
+  buildDrawerShards();
+  document.body.style.overflow = "hidden";   // 避免滚轮事件穿透到页面
+  $("drawerMask").classList.add("on");
+  $("archDrawer").classList.add("on");
+  $("archDrawer").setAttribute("aria-hidden", "false");
+  setTimeout(() => { try{ $("archSearch").focus(); }catch(e){} }, 240);
+}
+function closeDrawer(){
+  $("drawerMask").classList.remove("on");
+  $("archDrawer").classList.remove("on");
+  $("archDrawer").setAttribute("aria-hidden", "true");
+  document.body.style.overflow = "";
+}
+
+/* 两条存档并排对比 */
+function compareTwo(a, b){
+  const ra = a.result || {}, rb = b.result || {};
+  const fields = [
+    ["拼点点数", "clash"], ["总伤害", "total"],
+    ["最终基础威力", "finalBase"], ["最终硬币威力", "finalCoin"],
+    ["攻/防等级差", "levelDiff"],
+    ["不计算追伤合计", "sumJ"], ["追伤数值合计", "sumN"], ["固定追伤合计", "sumK"]
+  ];
+  let h = '<table style="width:100%;font-size:12.5px">'
+        + '<tr><th>项目</th><th>' + esc(a.name || "A") + '</th>'
+        + '<th>' + esc(b.name || "B") + '</th><th>差值</th></tr>';
+  fields.forEach(f => {
+    const va = ra[f[1]], vb = rb[f[1]];
+    const d = (typeof va === "number" && typeof vb === "number") ? (vb - va) : null;
+    h += '<tr><td>' + f[0] + '</td><td>' + fmt(va) + '</td><td>' + fmt(vb) + '</td><td>'
+       + (d === null ? "—" : (d > 0 ? "+" + fmt(d) : fmt(d))) + '</td></tr>';
+  });
+  h += '</table>';
+  openModal("存档对比", h, null, true);
+}
+
+/* ================= 循环存档 ================= */
+function snapLoops(){
+  const o = {};
+  LOOP_KEYS.forEach(k => { o[k] = (S[k] || []).slice(); });
+  return o;
+}
+
+/* 同一文件夹只保留一份循环存档，重复保存即覆盖 */
+function saveLoopArchive(){
+  const folder = resolveLoopFolder();
+  const list = loadArchives();
+  const payload = snapLoops();
+  const exist = list.find(a => a.type === "loop" && (a.folder || "") === folder);
+  if(exist){
+    exist.loops = payload;
+    exist.savedAt = nowStr();
+    exist.name = "循环数据 · " + shortTime();
+  } else {
+    list.unshift({
+      id: "L" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+      name: "循环数据 · " + shortTime(),
+      note: "", savedAt: nowStr(), folder: folder, type: "loop",
+      loops: payload
+    });
+  }
+  writeArchives(list);
+  renderArchives();
+  toast("循环数据已存入「" + folder + "」", "ok");
+}
+
+/* 从技能存档所在文件夹逐级向上找循环存档，子文件夹共享母级的那一份 */
+function findLoopArchive(list, folder){
+  let f = folder || "";
+  const seen = new Set();
+  while(f && !seen.has(f)){
+    seen.add(f);
+    const hit = list.find(a => a.type === "loop" && (a.folder || "") === f);
+    if(hit) return hit;
+    const i = f.lastIndexOf("/");
+    f = i < 0 ? "" : f.slice(0, i);
+  }
+  return list.find(a => a.type === "loop" && (a.folder || "") === "") || null;
+}
+
+/* ================= 存档文件夹 ================= */
+function renameFolder(folder){
+  if(!folder) return;
+  const parts = folder.split("/");
+  const oldName = parts[parts.length - 1];
+  saveDialog("重命名文件夹", oldName, "", (n) => {
+    const nn = (n || "").trim();
+    if(!nn || nn === oldName) return;
+    parts[parts.length - 1] = nn;
+    const nf = parts.join("/");
+    const list = loadArchives();
+    list.forEach(a => { if(a.folder === folder) a.folder = nf; });
+    writeArchives(list);
+    collapsedFolders.delete(folder);
+    renderArchives();
+    toast("文件夹已重命名", "ok");
+  });
+}
+
+function deleteFolder(folder){
+  if(!folder) return;
+  const list = loadArchives();
+  const cnt = list.filter(a => a.folder === folder).length;
+  askConfirm("delFolder", "删除文件夹",
+    "将删除文件夹「" + folder + "」。\n\n其中 " + cnt + " 个存档会被移到「未分类」，不会丢失。",
+    () => {
+      list.forEach(a => { if(a.folder === folder) a.folder = ""; });
+      writeArchives(list);
+      collapsedFolders.delete(folder);
+      renderArchives();
+      toast("文件夹已删除，存档已移到未分类", "ok");
+    });
+}
+
+/* ================= 带「不再提醒」的确认框 ================= */
+const memSkip = {};                       // localStorage 不可用时的内存兜底
+function skipFlag(key){
+  try{ return localStorage.getItem("jx_skip_" + key) === "1"; }
+  catch(e){ return !!memSkip[key]; }
+}
+function setSkipFlag(key, on){
+  if(on) memSkip[key] = true; else delete memSkip[key];
+  try{
+    if(on) localStorage.setItem("jx_skip_" + key, "1");
+    else localStorage.removeItem("jx_skip_" + key);
+  }catch(e){}
+}
+/* 已勾选「不再提醒」时直接放行，否则弹出带勾选框的确认框 */
+function askConfirm(key, title, body, onYes){
+  if(key && skipFlag(key)){ onYes(); return; }
+  const box = '<input type="checkbox" id="cSkip">';
+  openModal(title,
+    '<div style="font-size:12.5px;line-height:1.85;white-space:pre-wrap;margin-bottom:12px">'
+      + esc(body) + '</div>'
+    + '<label class="chk">' + box + ' 以后不再提醒</label>',
+    () => {
+      const c = $("cSkip");
+      if(c && c.checked) setSkipFlag(key, true);
+      onYes();
+    });
+}
+
+/* ================= 撤销 / 重做 =================
+   以「状态快照栈」实现。同一格连续输入会在 600ms 内合并为一步，
+   因此一次撤销回退的是一个字段的整段编辑，而不是单个按键。 */
+const UNDO_MAX = 120;
+let undoStack = [], redoStack = [], lastEditKey = null, lastEditAt = 0;
+
+/* 快照 = 当前输入 + 参数扫描结果。
+   输入需要序列化以便比较；扫描数据按「对象引用」共享 —— 扫描没变时
+   多个快照指向同一份数据，大区间（上千个点）也不会被反复复制。 */
+function snapshot(){
+  return { s: JSON.stringify(S), w: lastSweep };
+}
+
+/* 在改动发生「之前」调用，记录改动前的状态 */
+function pushUndo(key, force){
+  const now = Date.now();
+  if(!force && key && key === lastEditKey && now - lastEditAt < 600){
+    lastEditAt = now;                       // 合并为同一步
+    return;
+  }
+  const cur = snapshot();
+  const top = undoStack[undoStack.length - 1];
+  if(top && top.s === cur.s && top.w === cur.w){
+    lastEditKey = key; lastEditAt = now;    // 状态没变，不必记录
+    return;
+  }
+  undoStack.push(cur);
+  if(undoStack.length > UNDO_MAX) undoStack.shift();
+  redoStack.length = 0;
+  lastEditKey = key; lastEditAt = now;
+  updateUndoUI();
+}
+function updateUndoUI(){
+  const u = $("btnUndo"), r = $("btnRedo");
+  if(u) u.disabled = undoStack.length === 0;
+  if(r) r.disabled = redoStack.length === 0;
+}
+function applySnapshot(entry){
+  if(!entry) return;
+  let state;
+  try{ state = JSON.parse(entry.s || "{}"); }catch(err){ state = {}; }
+
+  S = normalize(state);
+  lastSweep = (entry.w && Array.isArray(entry.w.data) && entry.w.data.length > 1) ? entry.w : null;
+  lastEditKey = null;
+  syncInputs(); refresh(); autosave(); renderArchives();
+
+  if(lastSweep){
+    const sp = $("sweepParam");
+    if(sp && lastSweep.key) sp.value = lastSweep.key;
+    renderSweep(lastSweep.data, lastSweep.key);
+    try{ localStorage.setItem(LS_SWEEP, JSON.stringify(lastSweep)); }catch(e2){}
+  } else {
+    clearSweep();
+  }
+  updateUndoUI();
+}
+function undo(){
+  if(!undoStack.length){ toast("没有可撤销的改动了"); return; }
+  redoStack.push(snapshot());
+  if(redoStack.length > UNDO_MAX) redoStack.shift();
+  applySnapshot(undoStack.pop());
+  toast("已撤销");
+}
+function redo(){
+  if(!redoStack.length){ toast("没有可重做的改动了"); return; }
+  undoStack.push(snapshot());
+  if(undoStack.length > UNDO_MAX) undoStack.shift();
+  applySnapshot(redoStack.pop());
+  toast("已重做");
+}
+
+/* ================= 键盘导航（硬币表内像表格一样移动） ================= */
+function rowControls(tr){
+  return Array.from(tr.querySelectorAll("input[data-bind],select[data-bind]"));
+}
+/* 上下移动：保持在同一列（按控件在行内的次序对应），跳过分隔行 */
+function moveVertical(cur, dir){
+  const tr = cur.closest("tr");
+  if(!tr) return false;
+  const col = rowControls(tr).indexOf(cur);
+  if(col < 0) return false;
+  let sib = dir > 0 ? tr.nextElementSibling : tr.previousElementSibling;
+  while(sib){
+    if(sib.classList.contains("sep") || sib.classList.contains("hide")){
+      sib = dir > 0 ? sib.nextElementSibling : sib.previousElementSibling;
+      continue;
+    }
+    const target = rowControls(sib)[col];
+    if(target){
+      target.focus();
+      try{ target.select(); }catch(err){}
+      return true;
+    }
+    sib = dir > 0 ? sib.nextElementSibling : sib.previousElementSibling;
+  }
+  return false;
+}
+function selectAll(el){
+  if(el && el.matches && el.matches("input")){ try{ el.select(); }catch(err){} }
+}
+
+/* ================= 事件绑定 ================= */
+function bindEvents(){
+  /* 把一个绑定控件的当前值写入 state（调用方负责先 pushUndo） */
+  function writeBinding(t, b){
+    if(t.type === "checkbox"){ setByPath(b, t.checked); return; }
+    if(t.tagName === "SELECT"){ setByPath(b, t.value); return; }
+    if(t.type === "number"){
+      const raw = t.value;
+      // 循环拼点：留空表示该回合不参与平均
+      if(raw === "" && /^loop[123]c\./.test(b)){ setByPath(b, null); return; }
+      const v = sanitizeNumber(b, raw);
+      setByPath(b, v);
+      // 用户填了内容且数值被改动时才回写，避免打断 "0." 这类输入中间态
+      if(raw !== "" && typeof v === "number" && v !== num(raw)) t.value = String(v);
+      return;
+    }
+    setByPath(b, t.value);
+  }
+  document.addEventListener("input", e => {
+    const t = e.target, b = t.dataset && t.dataset.bind;
+    if(!b) return;
+    pushUndo(b);                    // 必须在写入之前，快照才是「改动前」
+    writeBinding(t, b);
+    scheduleRefresh(); autosave();
+  });
+
+  $("btnUndo").addEventListener("click", undo);
+  $("btnRedo").addEventListener("click", redo);
+  $("btnResetAll").addEventListener("click", resetAll);
+  $("btnResetCoins").addEventListener("click", resetParams);
+  // 任意数据输入框获得焦点时全选，便于直接覆盖
+  document.addEventListener("focusin", e => {
+    const t = e.target;
+    if(t && t.matches && t.matches('input[type=number][data-bind], input[type=text][data-bind]')){
+      try{ t.select(); }catch(err){}
+    }
+  });
+  $("btnOpenArch").addEventListener("click", () => {
+    // 再点一次关闭，形成开关
+    if($("archDrawer").classList.contains("on")) closeDrawer();
+    else openDrawer();
+  });
+  $("btnDrawerClose").addEventListener("click", closeDrawer);
+  $("drawerMask").addEventListener("click", closeDrawer);
+  $("btnDiag").addEventListener("click", () => {
+    openModal("存储自检",
+      '<pre style="margin:0;font:12px Consolas,Monaco,monospace;white-space:pre-wrap;line-height:1.8;color:#243b53">'
+      + esc(storageDiag().join("\n")) + '</pre>', null, true);
+  });
+  $("btnResetSkip").addEventListener("click", () => {
+    ["resetAll", "resetCoins", "delArchive"].forEach(k => setSkipFlag(k, false));
+    toast("已恢复全部二次确认提醒", "ok");
+  });
+  $("btnSave").addEventListener("click", () => {
+    saveDialog("存档", buildArchiveName(""), "", (name, note) => {
+      if(!S.skillName) { S.skillName = name; $("skillName").value = name; }
+      doSave(name, note);
+    });
+  });
+  $("btnQuickSave").addEventListener("click", quickSave);
+  $("btnCsv").addEventListener("click", exportCsv);
+  // 点标题栏折叠卡片（避开标题里的按钮与输入框）
+  document.querySelectorAll(".card>h2").forEach(h2 => {
+    h2.addEventListener("click", e => {
+      if(e.target.closest("button,input,select,label,a")) return;
+      const card = h2.closest(".card");
+      if(card) card.classList.toggle("collapsed");
+    });
+  });
+
+  // 技能预设下拉：选中即写入技能名
+  const skillPick = $("skillPick");
+  if(skillPick){
+    skillPick.addEventListener("change", () => {
+      const v = skillPick.value;
+      if(!v) return;
+      pushUndo("skillName");
+      S.skillName = v;
+      $("skillName").value = v;
+      scheduleRefresh(); autosave();
+    });
+  }
+
+  // 拼点格上的 × 按钮：切换「不参与平均」
+  document.addEventListener("click", e => {
+    const btn = e.target.closest && e.target.closest("button[data-skip]");
+    if(!btn) return;
+    const path = btn.dataset.skip;
+    pushUndo(path);
+    const cur = getByPath(path);
+    setByPath(path, (cur === null || cur === undefined || cur === "") ? 0 : null);
+    syncInputs(); refresh(); autosave();
+  });
+
+  const lmOn = $("loopModeOn");
+  if(lmOn){
+    lmOn.addEventListener("change", () => {
+      loopModeIdx = 0;
+      updateLoopModeUI();
+      if(lmOn.checked) toast("循环模式已开启，目标：" + LOOP_TARGET_NAME[loopTargetKey()], "ok");
+    });
+  }
+  const lmTarget = $("loopTarget");
+  if(lmTarget){
+    lmTarget.addEventListener("change", () => {
+      loopModeIdx = 0;                 // 切换目标组时回到该组第一回合
+      updateLoopModeUI();
+    });
+  }
+  const btnNextT = $("btnNextT");
+  if(btnNextT) btnNextT.addEventListener("click", nextTurn);
+
+  const btnPrevT = $("btnPrevT");
+  if(btnPrevT) btnPrevT.addEventListener("click", () => {
+    if(loopModeIdx <= 0) return;
+    loopModeIdx--;
+    updateLoopModeUI();
+    toast("已回到 T" + (loopModeIdx + 1) + "，可改数据后按 Ctrl+Enter 重新记录", "ok");
+  });
+
+  const btnLoopSave = $("btnLoopSave");
+  if(btnLoopSave) btnLoopSave.addEventListener("click", saveLoopArchive);
+
+  $("btnTheme").addEventListener("click", toggleTheme);
+  $("btnExport").addEventListener("click", exportAll);
+  $("btnImport").addEventListener("click", () => $("fileImport").click());
+  $("fileImport").addEventListener("change", e => {
+    const f = e.target.files && e.target.files[0];
+    if(f) importFile(f);
+    e.target.value = "";
+  });
+  $("btnSweep").addEventListener("click", runSweep);
+  $("btnSweepReset").addEventListener("click", () => {
+    const d = SWEEP_DEF[$("sweepParam").value] || [0, 10, 1];
+    $("sweepFrom").value = d[0]; $("sweepTo").value = d[1]; $("sweepStep").value = d[2];
+  });
+  $("sweepParam").addEventListener("change", () => {
+    const d = SWEEP_DEF[$("sweepParam").value] || [0, 10, 1];
+    $("sweepFrom").value = d[0]; $("sweepTo").value = d[1]; $("sweepStep").value = d[2];
+    // 参数换了，旧曲线不再对应，直接清掉避免误读
+    clearSweep();
+  });
+  /* ---- 存档拖拽排序 ---- */
+  $("archList").addEventListener("dragstart", e => {
+    // 优先判断是不是在拖文件夹
+    const gh = e.target.closest(".ghead");
+    if(gh && !e.target.closest("button")){
+      const grp = gh.closest(".archgroup");
+      dragFolder = grp ? grp.dataset.folder : "";
+      dragArchId = null;
+      gh.classList.add("dragging");
+      try{ e.dataTransfer.effectAllowed = "move"; }catch(err){}
+      return;
+    }
+    const el = e.target.closest(".arch");
+    if(!el) return;
+    dragArchId = el.dataset.id;
+    el.classList.add("dragging");
+    try{ e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", dragArchId); }catch(err){}
+  });
+  $("archList").addEventListener("dragend", e => {
+    Array.prototype.forEach.call(document.querySelectorAll(".ghead.dragging"), x => x.classList.remove("dragging"));
+    Array.prototype.forEach.call(document.querySelectorAll(".archgroup.drop-target"), x => x.classList.remove("drop-target"));
+    dragFolder = null;
+    const el = e.target.closest(".arch");
+    if(el) el.classList.remove("dragging");
+    Array.prototype.forEach.call(document.querySelectorAll(".arch.drop-before"), x => x.classList.remove("drop-before"));
+    dragArchId = null;
+  });
+  $("archList").addEventListener("dragover", e => {
+    // 文件夹拖动：高亮目标组
+    if(dragFolder !== null){
+      const gh = e.target.closest(".ghead");
+      if(!gh) return;
+      e.preventDefault();
+      Array.prototype.forEach.call(document.querySelectorAll(".archgroup.drop-target"), x => x.classList.remove("drop-target"));
+      const grp = gh.closest(".archgroup");
+      if(grp && grp.dataset.folder !== dragFolder) grp.classList.add("drop-target");
+      return;
+    }
+    const el = e.target.closest(".arch");
+    if(!el || !dragArchId || el.dataset.id === dragArchId) return;
+    e.preventDefault();
+    Array.prototype.forEach.call(document.querySelectorAll(".arch.drop-before"), x => x.classList.remove("drop-before"));
+    el.classList.add("drop-before");
+  });
+  $("archList").addEventListener("drop", e => {
+    // 文件夹重排
+    if(dragFolder !== null){
+      const gh = e.target.closest(".ghead");
+      if(!gh){ dragFolder = null; return; }
+      e.preventDefault();
+      const target = gh.closest(".archgroup").dataset.folder;
+      const from = dragFolder;
+      dragFolder = null;
+      if(from === target){ renderArchives(); return; }
+
+      const list = loadArchives();
+      const all = new Set(list.map(a => a.folder || ""));
+      let ord = loadFolderOrder().filter(f => all.has(f));
+      all.forEach(f => { if(ord.indexOf(f) < 0) ord.push(f); });
+
+      const iFrom = ord.indexOf(from);
+      const iTo = ord.indexOf(target);
+      if(iFrom >= 0 && iTo >= 0){
+        ord.splice(iFrom, 1);
+        ord.splice(ord.indexOf(target) >= 0 ? ord.indexOf(target) : iTo, 0, from);
+      } else {
+        ord.push(from);
+      }
+      saveFolderOrder(ord);
+      renderArchives();
+      toast("文件夹顺序已更新", "ok");
+      return;
+    }
+    const el = e.target.closest(".arch");
+    if(!el || !dragArchId) return;
+    e.preventDefault();
+    const targetId = el.dataset.id;
+    if(targetId === dragArchId) return;
+
+    const list = loadArchives();
+    const fromIdx = list.findIndex(a => a.id === dragArchId);
+    const target  = list.find(a => a.id === targetId);
+    if(fromIdx < 0 || !target) return;
+
+    const [item] = list.splice(fromIdx, 1);
+    item.folder = target.folder || "";            // 跨组时跟随目标所在文件夹
+    const at = list.findIndex(a => a.id === targetId);
+    list.splice(at < 0 ? list.length : at, 0, item);
+
+    writeArchives(list);
+    dragArchId = null;
+    renderArchives();
+    toast("已移动存档", "ok");
+  });
+
+  $("archSearch").addEventListener("input", renderArchives);
+  const archSortEl = $("archSort");
+  if(archSortEl) archSortEl.addEventListener("change", renderArchives);
+  $("archFilter").addEventListener("change", renderArchives);
+
+  // 另一个标签页改动了存档数据时提醒一下，避免本页继续编辑后被覆盖
+  window.addEventListener("storage", e => {
+    if(!e || !e.key) return;
+    if(e.key === LS_CUR || e.key === LS_ARCH){
+      toast("另一个标签页修改了存档数据，本页内容可能已过期", "err");
+    }
+  });
+
+  // 单条勾选
+  $("archList").addEventListener("change", e => {
+    const cb = e.target.closest && e.target.closest("input[data-pick]");
+    if(!cb) return;
+    if(cb.checked) archSel.add(cb.dataset.pick);
+    else archSel.delete(cb.dataset.pick);
+    updateSelUI();
+  });
+  // 全选 / 取消全选（只作用于当前筛选出来的条目）
+  $("archSelAll").addEventListener("change", e => {
+    const on = e.target.checked;
+    document.querySelectorAll("#archList input[data-pick]").forEach(cb => {
+      cb.checked = on;
+      if(on) archSel.add(cb.dataset.pick);
+      else archSel.delete(cb.dataset.pick);
+    });
+    updateSelUI();
+  });
+  // 批量删除
+  $("btnCompareSel").addEventListener("click", () => {
+    if(archSel.size !== 2) return;
+    const list = loadArchives();
+    const ids = Array.from(archSel);
+    const a = list.find(x => x.id === ids[0]);
+    const b = list.find(x => x.id === ids[1]);
+    if(a && b) compareTwo(a, b);
+  });
+  $("btnDelSelected").addEventListener("click", () => {
+    const n = archSel.size;
+    if(!n) return;
+    askConfirm("delSelected", "批量删除档案",
+      "确定删除选中的 " + n + " 个档案？\n\n此操作无法撤销。",
+      () => {
+        const list = loadArchives().filter(a => !archSel.has(a.id));
+        writeArchives(list);
+        archSel.clear();
+        renderArchives();
+        toast("已删除 " + n + " 个档案", "ok");
+      });
+  });
+
+  $("archList").addEventListener("click", e => {
+    // 组头折叠（点空白处）
+    const head = e.target.closest(".ghead");
+    if(head && !e.target.closest("button")){
+      const grp = head.closest(".archgroup");
+      const f = grp ? grp.dataset.folder : "";
+      if(collapsedFolders.has(f)) collapsedFolders.delete(f);
+      else collapsedFolders.add(f);
+      renderArchives();
+      return;
+    }
+
+    const btn = e.target.closest("button[data-act]");
+    if(!btn) return;
+    const act0 = btn.dataset.act;
+    // 文件夹级操作
+    if(act0 === "renameFolder" || act0 === "delFolder"){
+      const grp0 = e.target.closest(".archgroup");
+      const f0 = grp0 ? grp0.dataset.folder : "";
+      if(act0 === "renameFolder") renameFolder(f0);
+      else deleteFolder(f0);
+      return;
+    }
+
+    const wrap = e.target.closest(".arch");
+    if(!wrap) return;
+    const id = wrap.dataset.id;
+    const list = loadArchives();
+    const a = list.find(x => x.id === id);
+    if(!a) { toast("档案不存在（可能已被删除）", "err"); renderArchives(); return; }
+    const act = btn.dataset.act;
+
+    if(a.type === "loop" && act === "load"){
+      if(!a.loops){ toast("该循环存档没有数据", "err"); return; }
+      pushUndo(null, true);
+      LOOP_KEYS.forEach(k => {
+        if(Array.isArray(a.loops[k])) S[k] = a.loops[k].slice();
+      });
+      refresh(); autosave();
+      closeDrawer();
+      toast("已读取循环数据", "ok");
+      return;
+    }
+
+    if(act === "load"){
+      const doLoad = () => {
+        pushUndo(null, true);
+        // 循环数据是跨存档的独立图层：先保住当前值，再由同文件夹的循环存档覆盖
+        const keep = {};
+        LOOP_KEYS.forEach(k => { keep[k] = (S[k] || []).slice(); });
+        S = normalize(a.state);
+        LOOP_KEYS.forEach(k => { S[k] = keep[k]; });
+        const la = findLoopArchive(list, a.folder);
+        if(la && la.loops){
+          LOOP_KEYS.forEach(k => {
+            if(Array.isArray(la.loops[k])) S[k] = la.loops[k].slice();
+          });
+        }
+        syncInputs(); refresh(); autosave(); updateUndoUI();
+        closeDrawer();
+        toast("已读档：" + (a.name || "") + (la ? "（同时载入循环数据）" : ""), "ok");
+      };
+      const dirty = JSON.stringify(S) !== JSON.stringify(defaultState());
+      if(dirty){
+        askConfirm("loadArchive", "读档",
+          "读档将覆盖当前未存档的输入。\n\n建议先「⚡ 快速存档」保留现场。\n\n确定读档「" + (a.name || "") + "」？",
+          doLoad);
+      } else {
+        doLoad();
+      }
+    }
+    else if(act === "compare") showCompare(a);
+    else if(act === "rename"){
+      saveDialog("重命名档案", a.name, a.note, (n, nt) => {
+        a.name = n;
+        a.note = nt;
+        // 同步到状态里的技能名，否则读档后表头仍是旧名字
+        if(a.state) a.state.skillName = n;
+        writeArchives(list);
+        renderArchives();
+        toast("已更新档案信息", "ok");
+      });
+    }
+    else if(act === "overwrite"){
+      askConfirm("overwriteArchive", "覆盖存档",
+        "用当前输入覆盖档案「" + (a.name || "") + "」？\n\n原内容将被替换且无法撤销。",
+        () => {
+          a.state = JSON.parse(JSON.stringify(S));
+          a.result = snapshotResult();
+          a.savedAt = nowStr();
+          // 名称也跟随当前技能名，避免存档里名字和内容对不上
+          if(S.skillName) a.name = S.skillName;
+          writeArchives(list);
+          renderArchives();
+          toast("已覆盖存档", "ok");
+        });
+    }
+    else if(act === "export1"){
+      download("存档-" + (a.name || "archive").replace(/[\\/:*?"<>|]/g, "_") + ".json",
+               JSON.stringify({app:"镜息演算 · 边狱巴士技能伤害计算器", appVersion:APP_VERSION, ver:STATE_VER, exportedAt:nowStr(), current:a.state, archives:[a]}, null, 2));
+      toast("已导出该档案", "ok");
+    }
+    else if(act === "del"){
+      askConfirm("delArchive", "删除档案",
+        "确定删除档案「" + (a.name || "") + "」？\n\n此操作无法撤销。",
+        () => {
+          writeArchives(list.filter(x => x.id !== id));
+          renderArchives();
+          toast("已删除档案", "ok");
+        });
+    }
+  });
+
+  $("mCancel").addEventListener("click", closeModal);
+  $("mOk").addEventListener("click", () => { const f = modalOk; closeModal(); if(f) f(); });
+  $("overlay").addEventListener("click", e => { if(e.target === $("overlay")) closeModal(); });
+  // 快捷键面板
+  const SHORTCUT_LIST = [
+    ["Ctrl + Z", "撤销上一步"],
+    ["Ctrl + Y", "重做"],
+    ["Ctrl + S", "快速存档"],
+    ["Enter / ↓", "硬币表内向下移动"],
+    ["Shift + Enter / ↑", "硬币表内向上移动"],
+    ["Tab", "横向移动到下一个输入"],
+    ["Esc", "关闭弹窗 / 侧边抽屉"],
+    ["?", "显示本面板"]
+  ];
+  function showShortcuts(){
+    const rows = SHORTCUT_LIST.map(it =>
+      '<tr><td style="padding:6px 10px;text-align:left">' +
+      '<span class="kbd">' + esc(it[0]) + '</span></td>' +
+      '<td style="padding:6px 10px;text-align:left">' + esc(it[1]) + '</td></tr>'
+    ).join("");
+    openModal("快捷键",
+      '<table style="width:100%;font-size:12.5px">' + rows + '</table>',
+      null, true);
+  }
+
+  document.addEventListener("keydown", e => {
+    if(e.key === "Escape" && $("overlay").classList.contains("on")) closeModal();
+    if(e.key === "Escape" && $("archDrawer").classList.contains("on")) closeDrawer();
+    // Ctrl + Enter：循环模式下记录并进入下一回合
+    if(mod && e.key === "Enter" && !inModal && loopModeOn()){
+      e.preventDefault();
+      nextTurn();
+      return;
+    }
+    // 按 ? 唤出快捷键面板（输入框内不触发）
+    if(e.key === "?" && !inModal && !/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)){
+      e.preventDefault();
+      showShortcuts();
+      return;
+    }
+
+    const inModal = $("overlay").classList.contains("on");
+    const mod = e.ctrlKey || e.metaKey;
+
+    // 撤销 / 重做
+    if(mod && !inModal){
+      if(!e.shiftKey && (e.key === "z" || e.key === "Z")){ e.preventDefault(); undo(); return; }
+      if((e.shiftKey && (e.key === "z" || e.key === "Z")) || e.key === "y" || e.key === "Y"){
+        e.preventDefault(); redo(); return;
+      }
+    }
+    if((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S")){
+      e.preventDefault();
+      if(!$("overlay").classList.contains("on")) quickSave();
+    }
+
+    // 硬币表内：回车 / 上下方向键在行间移动
+    if(!inModal && e.target && e.target.closest && e.target.closest("#coinTable")){
+      if(e.key === "Enter"){
+        if(moveVertical(e.target, e.shiftKey ? -1 : 1)) e.preventDefault();
+      } else if(e.key === "ArrowDown"){
+        if(moveVertical(e.target, 1)) e.preventDefault();
+      } else if(e.key === "ArrowUp"){
+        if(moveVertical(e.target, -1)) e.preventDefault();
+      }
+    }
+    if(e.key === "Enter" && $("overlay").classList.contains("on") && modalOk){
+      const f = modalOk; closeModal(); f();
+    }
+  });
+}
+
+/* ================= 启动 ================= */
+(function init(){
+  buildCoinTable();
+  buildLoops();
+  bindEvents();
+  try{ applyTheme(localStorage.getItem(LS_THEME) || "dark"); }catch(e){ applyTheme("dark"); }
+  const verEl = $("verTag");
+  if(verEl) verEl.textContent = "v" + APP_VERSION;
+
+  // 卡片依次浮现
+  Array.prototype.forEach.call(document.querySelectorAll(".card"), (c, i) => {
+    c.style.setProperty("--i", i);
+  });
+
+  // 开场动画开关
+  const bt = $("bootToggle");
+  if(bt){
+    bt.checked = bootEnabled();
+    bt.addEventListener("change", () => {
+      try{ localStorage.setItem(LS_BOOT, bt.checked ? "1" : "0"); }catch(e){}
+    });
+  }
+  buildHeaderShards();
+  buildAnchorNav();
+  buildBgBubbles();
+  buildBgSparks();
+  buildBgShards();
+  decorateCards();
+  window.addEventListener("scroll", () => {
+    if(bgTick) return;
+    bgTick = true;
+    requestAnimationFrame(() => { bgTick = false; updateBgShards(); });
+  }, {passive:true});
+
+  updateLoopModeUI();
+  syncHeaderVar();
+  window.addEventListener("resize", syncHeaderVar);
+  window.addEventListener("load", syncHeaderVar);          // 布局完成后再校准一次
+  requestAnimationFrame(syncHeaderVar);
+  if(window.ResizeObserver){
+    const hdEl = document.querySelector("header");
+    if(hdEl) new ResizeObserver(syncHeaderVar).observe(hdEl);
+  }
+  if(bootEnabled()) playBoot();
+  const raw = lsGet(LS_CUR);
+  if(raw){
+    try{ S = normalize(JSON.parse(raw)); }catch(e){ S = defaultState(); }
+  }
+  if(!storeOK) $("storeWarn").classList.add("on");
+  // 恢复上次的参数扫描，避免刷新后图没了
+  try{
+    const rawSweep = localStorage.getItem(LS_SWEEP);
+    if(rawSweep){
+      const sv = JSON.parse(rawSweep);
+      if(sv && Array.isArray(sv.data) && sv.data.length > 1 && sv.key){
+        $("sweepParam").value = sv.key;
+        if(sv.from != null) $("sweepFrom").value = sv.from;
+        if(sv.to   != null) $("sweepTo").value   = sv.to;
+        if(sv.step != null) $("sweepStep").value = sv.step;
+        renderSweep(sv.data, sv.key);
+        $("sweepNote").innerHTML += '<br><span class="dim">（这是上次扫描的结果，点「开始扫描」可按当前配置重新计算）</span>';
+      }
+    }
+  }catch(e){}
+  syncInputs();
+  refresh();
+  renderArchives();
+  updateUndoUI();
+})();
+</script>
+</body>
+</html>
