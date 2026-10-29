@@ -1,1274 +1,1240 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
 <title>镜息演算 · 边狱巴士技能伤害计算器</title>
 <style>
-/* ===================================================================
-   镜息演算 v2.0  样式层
-   设计语言参考：深色层次 + 玻璃拟态 + 蓝紫强调 + 统一缓动
-   =================================================================== */
+/* =========================================================
+   镜息演算 3.3 · 界面层（与计算逻辑完全解耦）
+   设计语言参考「浮士德启动器 · 官网」：
+     中性深黑底 / 细边框卡片 / 单一蓝色强调色 / 小圆角 / 无泛光、无毛玻璃
+   ========================================================= */
 
+/* ---------- 令牌：中性黑灰 + 单一蓝色强调（无蓝调底色、无辉光） ---------- */
 :root{
-  /* 优先思源黑体（Noto Sans SC 与其同源），逐级回退到系统黑体 */
-  --font: "Noto Sans SC", "Source Han Sans SC", "思源黑体",
-          "HarmonyOS Sans SC", "MiSans", "PingFang SC",
-          "Microsoft YaHei UI", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
-  --mono: "Source Code Pro", "Cascadia Mono", "SF Mono", Consolas, "Liberation Mono", monospace;
+  --font:"Inter","HarmonyOS Sans SC","PingFang SC","Microsoft YaHei UI","Microsoft YaHei",system-ui,sans-serif;
+  --mono:"JetBrains Mono","Cascadia Mono",Consolas,"Courier New",monospace;
 
-  /* —— 暗色（默认） —— */
-  --bg-0:#0b0e13;
-  --bg-1:#11161e;
-  --bg-2:#171d27;
-  --bg-3:#1f2732;
-  --ink-0:#eef2f7;
-  --ink-1:#c2cbda;
-  --ink-2:#8592a6;
-  --ink-3:#596475;
+  --r-xs:3px; --r-s:4px; --r-m:6px; --r-l:8px;
 
-  --line:rgba(255,255,255,.07);
-  --line-2:rgba(255,255,255,.14);
-  --glass:rgba(255,255,255,.035);
-  --glass-2:rgba(255,255,255,.06);
+  /* 页面底 → 卡片 → 输入 → 浮起，纯中性色阶 */
+  --bg-0:#0b0c0d;
+  --bg-1:#111214;
+  --bg-2:#17191c;
+  --bg-3:#1e2124;
+  --bg-4:#26292d;
 
-  --primary:#4c8dff;
-  --primary-2:#77aaff;
-  --primary-3:#2c6bd4;
-  --accent:#3ea3ff;
-  --glow:rgba(76,141,255,.45);
+  --line:#24272b;
+  --line-2:#2f3338;
+  --line-3:#3c4147;
 
-  --ok:#22c55e;
-  --warn:#f5a524;
-  --danger:#ff6b6b;
+  --ink-0:#e8eaed;
+  --ink-1:#b6bbc2;
+  --ink-2:#8c9299;
+  --ink-3:#6a7078;
 
-  /* 三类语义底色 */
-  --in-bg:rgba(76,141,255,.10);
-  --in-fg:#9cc4ff;
-  --in-line:rgba(76,141,255,.24);
-  --auto-bg:rgba(34,197,94,.09);
-  --auto-fg:#8fe0ac;
-  --auto-line:rgba(34,197,94,.22);
-  --sum-bg:rgba(245,165,36,.12);
-  --sum-fg:#ffcb7a;
-  --sum-line:rgba(245,165,36,.26);
+  --primary:#2f7de1;
+  --primary-2:#5b9cf0;
+  --primary-3:#9cc4f7;
+  --hover:rgba(47,125,225,.10);
+  --ring:rgba(47,125,225,.32);
+  --danger:#e0635f;
+  --warn:#d3a24f;
+  --ok:#57b67d;
 
-  --label-bg:#202836;
-  --label-fg:#dbe4f0;
+  /* 玻璃质感：只用「半透明渐变 + 内高光」，不做 backdrop-filter（避免整页每帧重绘） */
+  --glass-line:rgba(255,255,255,.075);
+  --glass-hi:rgba(255,255,255,.055);
+  --glass-sheen:linear-gradient(180deg, rgba(255,255,255,.052) 0%, rgba(255,255,255,.014) 46%, rgba(255,255,255,0) 100%);
+  --hd-bg:rgba(13,15,17,.78);
 
-  --r-s:8px; --r-m:12px; --r-l:16px; --r-xl:20px;
-  --sh-1:0 1px 2px rgba(0,0,0,.35);
-  --sh-2:0 10px 30px -18px rgba(0,0,0,.9);
-  --sh-glow:0 14px 44px -22px rgba(76,141,255,.6);
-  --ease:cubic-bezier(.22,1,.36,1);
-  --ease-spring:cubic-bezier(.34,1.56,.64,1);
+  /* 语义色只带一点点色相，底色一律中性 */
+  --in-bg:#1b2129;    --in-fg:#9cc6f5;  --in-line:#2a3849;
+  --auto-bg:#1b2124;  --auto-fg:#8ad0a4; --auto-line:#2c3a31;
+  --sum-bg:#1c1f24;   --sum-fg:#aebbe0;  --sum-line:#333a48;
+  --label-bg:#15171a; --label-fg:#b6bbc2;
+  --muted:var(--ink-2);
+  --link:var(--primary-2);
 
-  --hdr-h:104px;
+  /* 开关滑块：深色主题不用纯白，避免刺眼 */
+  --sw-knob-off:#70777f;
+  --sw-knob-on:#cfe2fb;
+  --sw-rail-off:#20242a;
+
+  /* 顶栏极弱环境光（只有这一处大面积动效，纯 transform，不重绘内容） */
+  --aurora-1:rgba(47,125,225,.13);
+  --aurora-2:rgba(122,150,255,.06);
+
+  --hd-h:0px;
+  --zinv:0.869565;   /* 1 / 1.15，用于抵消 zoom 下的 100vh / 100vw */
+  --warn-bg:#1e1a15;
+  --ease:cubic-bezier(.22,.61,.36,1);
 }
 
 html[data-theme="light"]{
-  --bg-0:#e9edf4;
-  --bg-1:#f4f7fb;
+  --glass-line:rgba(18,38,68,.085);
+  --glass-hi:rgba(255,255,255,.92);
+  --glass-sheen:linear-gradient(180deg, rgba(255,255,255,.85) 0%, rgba(255,255,255,.35) 50%, rgba(255,255,255,0) 100%);
+  --hd-bg:rgba(252,253,254,.75);
+  --bg-0:#f2f4f7;
+  --bg-1:#fbfcfd;
   --bg-2:#ffffff;
-  --bg-3:#f1f4f9;
-  --ink-0:#141a24;
-  --ink-1:#333c4b;
-  --ink-2:#657287;
-  --ink-3:#96a1b2;
+  --bg-3:#eef2f6;
+  --bg-4:#e3e9f0;
 
-  --line:rgba(15,23,38,.08);
-  --line-2:rgba(15,23,38,.16);
-  --glass:rgba(255,255,255,.72);
-  --glass-2:rgba(255,255,255,.9);
+  --line:#e3e8ef;
+  --line-2:#d2dae4;
+  --line-3:#bcc7d4;
 
-  --primary:#2563eb;
-  --primary-2:#3b82f6;
-  --primary-3:#1d4ed8;
-  --accent:#2f6fd8;
-  --glow:rgba(37,99,235,.25);
+  --ink-0:#111820;
+  --ink-1:#3d4855;
+  --ink-2:#68737f;
+  --ink-3:#8d98a5;
 
-  --in-bg:#eaf2ff;
-  --in-fg:#1a54b8;
-  --in-line:#c2d8ff;
-  --auto-bg:#e8f8f1;
-  --auto-fg:#0b7a55;
-  --auto-line:#bbe7d4;
-  --sum-bg:#fff4e2;
-  --sum-fg:#a8620a;
-  --sum-line:#f2ddba;
+  --primary:#2f6fd0;
+  --primary-2:#2a63bb;
+  --primary-3:#1c4c96;
+  --hover:rgba(47,111,208,.08);
+  --ring:rgba(47,111,208,.25);
+  --danger:#c94848;
+  --warn:#b07b16;
+  --ok:#2f8a56;
 
-  --label-bg:#e6ebf4;
-  --label-fg:#2a3444;
+  --in-bg:#eef3fa;    --in-fg:#1f5aa6;  --in-line:#d5e2f3;
+  --auto-bg:#eef5f0;  --auto-fg:#1f7a4a; --auto-line:#d2e6da;
+  --sum-bg:#f2f3f6;   --sum-fg:#2a4c9e;  --sum-line:#dcdff0;
+  --label-bg:#f5f6f8; --label-fg:#3d434b;
+  --muted:var(--ink-2);
+  --link:var(--primary);
 
-  --sh-1:0 1px 2px rgba(15,23,38,.07);
-  --sh-2:0 10px 30px -18px rgba(15,23,38,.3);
-  --sh-glow:0 14px 44px -22px rgba(37,99,235,.35);
+  --aurora-1:rgba(47,125,225,.10);
+  --aurora-2:rgba(90,140,220,.05);
+  --sw-knob-off:#ffffff;
+  --sw-knob-on:#ffffff;
+  --sw-rail-off:#e7ecf2;
+
+  --warn-bg:#fdf6e8;
 }
 
-*{box-sizing:border-box}
-html,body{margin:0;padding:0}
-
-/* 全屏细噪点：给所有渐变增加磨砂/胶片颗粒，消除塑料感 */
-body::after{
-  content:""; position:fixed; inset:0; pointer-events:none; z-index:9997;
-  opacity:.038; mix-blend-mode:overlay;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.6'/%3E%3C/svg%3E");
-}
+/* ---------- 基础 ---------- */
+*,*::before,*::after{box-sizing:border-box}
+html{overflow-x:clip;scroll-behavior:smooth}
+/* 整体等比缩放：一处 zoom 放大全部内容，元素自身尺寸一律不单独改。
+   副作用两条，已在下面配套处理：
+     1) 媒体查询仍按「未缩放」视口判定 -> 断点全部 ×1.15；
+     2) 100vh / 100vw 不会跟着缩小 -> 需要的地方乘 --zinv。 */
 body{
-  background:
-    radial-gradient(1200px 600px at 12% -10%, rgba(76,141,255,.10), transparent 60%),
-    radial-gradient(900px 500px at 92% 0%, rgba(139,92,246,.08), transparent 55%),
-    var(--bg-0);
-  color:var(--ink-0);
-  font-family:var(--font);
-  font-size:13.5px;
-  line-height:1.62;
-  font-feature-settings:"tnum" 1, "kern" 1;
-  text-rendering:optimizeLegibility;
-  min-height:100vh;
-  padding-bottom:60px;
+  zoom:1.15;
+  margin:0; background:var(--bg-0); color:var(--ink-1);
+  font-family:var(--font); font-size:13px; line-height:1.6;
   -webkit-font-smoothing:antialiased;
+  padding-bottom:72px;
 }
-html[data-theme="light"] body{
+::selection{background:var(--primary); color:#fff}
+a{color:var(--primary-2); text-decoration:none}
+code{font-family:var(--mono); font-size:11.5px; background:var(--bg-3); border:1px solid var(--line); border-radius:var(--r-xs); padding:1px 5px; color:var(--ink-0)}
+b{color:var(--ink-0)}
+.dim{color:var(--ink-3)}
+
+/* 装饰层：只保留背景的「玻璃渣」一层（见下方 bgGlass），其余全部下线 */
+.tyndall,.bubbles,.sparks,
+.glow,.cshards,.hd-shards,.dshards,
+.empty-shards,.loopline{display:none !important}
+
+/* ---------- 背景：碎裂玻璃渣 ----------
+   只跑 transform / opacity，全部交给合成器；没有滚动监听、没有逐帧 JS。
+   contain:strict 把它的布局与绘制隔离在固定层内，不参与页面其余部分的排版。 */
+.bg-layer{
+  position:fixed; inset:0; z-index:0; pointer-events:none;
+  overflow:hidden; contain:strict;
+}
+.bg-shard-host{position:absolute; inset:0}
+.bg-shard-wrap{
+  position:absolute; display:block; opacity:0;
+  animation:bgRise var(--dur,22s) linear var(--dly,0s) infinite;
+}
+.bg-shard{
+  position:relative; display:block; width:var(--w,20px); height:var(--h,16px);
+  background:linear-gradient(133deg, rgba(210,232,255,.66) 0%, rgba(150,195,255,.26) 36%, rgba(96,150,240,.06) 74%, rgba(76,141,255,0) 100%);
+  clip-path:polygon(0 0,100% 22%,78% 100%,12% 74%);
+}
+/* 浅色主题：白底上要反过来，用偏冷的深蓝灰碎渣 */
+html[data-theme="light"] .bg-shard{
+  background:linear-gradient(133deg, rgba(92,138,198,.50) 0%, rgba(126,168,220,.24) 38%, rgba(150,185,230,.05) 74%, rgba(150,185,230,0) 100%);
+}
+html[data-theme="light"] .bg-shard::before{
+  background:linear-gradient(158deg, rgba(255,255,255,.85) 0%, rgba(140,180,230,.22) 44%, transparent 66%);
+}
+/* 上半个切面提亮：一条明暗交界，碎片才像「玻璃」而不是「灰块」 */
+.bg-shard::before{
+  content:""; position:absolute; inset:0;
+  background:linear-gradient(158deg, rgba(255,255,255,.92) 0%, rgba(214,236,255,.20) 44%, transparent 66%);
+  clip-path:polygon(0 0,100% 0,53% 57%);
+}
+@keyframes bgRise{
+  0%{opacity:0; transform:translate3d(0, 36px, 0) rotate(0deg) scale(.86)}
+  14%{opacity:var(--o,.15)}
+  68%{opacity:calc(var(--o,.15) * .75)}
+  100%{opacity:0; transform:translate3d(var(--dx,0px), var(--dy,-140px), 0) rotate(var(--rot,60deg)) scale(1.06)}
+}
+
+/* ---------- 顶栏 ---------- */
+/* 静态环境光：一次绘制、不参与动画，只在页面边缘留一点冷色，让玻璃面有东西可「托」 */
+body::before{
+  content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
   background:
-    radial-gradient(1200px 600px at 12% -10%, rgba(37,99,235,.08), transparent 60%),
-    radial-gradient(900px 500px at 92% 0%, rgba(139,92,246,.06), transparent 55%),
-    var(--bg-0);
+    radial-gradient(920px 540px at 50% -8%, rgba(47,125,225,.10), transparent 70%),
+    radial-gradient(720px 440px at 90% 4%, rgba(122,150,255,.045), transparent 72%);
 }
-
-/* ============ 顶栏 ============ */
+html[data-theme="light"] body::before{
+  background:
+    radial-gradient(920px 540px at 50% -8%, rgba(47,125,225,.075), transparent 70%),
+    radial-gradient(720px 440px at 90% 4%, rgba(122,150,255,.05), transparent 72%);
+}
 header{
-  position:sticky; top:0; z-index:50;
-  padding:0 20px 12px;
-  background:linear-gradient(180deg, rgba(11,14,19,.92), rgba(11,14,19,.72) 60%, transparent);
-  backdrop-filter:blur(14px) saturate(140%);
-  -webkit-backdrop-filter:blur(14px) saturate(140%);
-  border-bottom:1px solid var(--line);
+  position:sticky; top:0; z-index:60;
+  /* 顶栏是唯一用 backdrop-filter 的地方：单层、固定在视口顶部，代价可控 */
+  background:var(--hd-bg);
+  -webkit-backdrop-filter:blur(10px) saturate(1.28);
+  backdrop-filter:blur(10px) saturate(1.28);
+  border-bottom:1px solid var(--glass-line);
+  /* 上/下都留出呼吸位：避免工具条贴着页面顶边或表头下边线 */
+  padding:12px 0 10px;
 }
-html[data-theme="light"] header{
-  background:linear-gradient(180deg, rgba(244,247,251,.95), rgba(244,247,251,.75) 60%, transparent);
+.hd-in{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr);
+  grid-template-areas:"brand skill" "tools tools";
+  gap:8px 16px;
+  align-items:center;
+  position:relative; z-index:1;
+  max-width:960px; margin:0 auto; padding:0 22px;
 }
-.hd-top{display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; padding:14px 0 0}
+.hd-brand{grid-area:brand; display:flex; flex-direction:column; gap:2px; min-width:0}
+.hd-skill{grid-area:skill; display:flex; justify-content:flex-end; min-width:0}
 header h1{
-  margin:0; font-size:19px; font-weight:800; letter-spacing:.06em;
-  background:linear-gradient(100deg,
-    #ffffff 0%, var(--primary-2) 26%, #a78bfa 42%,
-    #ffffff 56%, var(--primary-2) 72%, #a78bfa 100%);
-  background-size:240% 100%;
-  -webkit-background-clip:text; background-clip:text; color:transparent;
-  /* 每 9 秒一道极淡的反光扫过，呼应「镜面」意象 */
-  animation:h1Sheen 9s var(--ease) infinite;
+  margin:0; font-size:17px; font-weight:700; letter-spacing:.01em;
+  color:var(--ink-0); display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;
 }
-@keyframes h1Sheen{
-  0%, 62%{background-position:120% 0}
-  100%{background-position:-120% 0}
+header h1 .brand-ico{
+  width:22px; height:22px; flex:0 0 auto; align-self:center;
+  border-radius:6px; display:block;
+  box-shadow:0 0 0 1px rgba(255,255,255,.10), 0 2px 8px -3px rgba(0,0,0,.7);
 }
-html[data-theme="light"] header h1{
-  background:linear-gradient(120deg,#0f172a 10%, var(--primary) 60%, #7c3aed 100%);
-  -webkit-background-clip:text; background-clip:text; color:transparent;
-}
-header .sub{font-size:11.5px; color:var(--ink-3); letter-spacing:.02em}
-header .sub #verTag{
-  display:inline-block; padding:1px 7px; border-radius:999px;
-  background:var(--glass-2); border:1px solid var(--line-2);
-  color:var(--primary-2); font-weight:700; margin-right:6px;
-}
-.hd-spacer{flex:1}
+header h1 .hd-sub{font-size:11.5px; font-weight:400; color:var(--ink-3); letter-spacing:0}
+header .sub{font-size:11px; color:var(--ink-3); line-height:1.45}
+header .sub b{color:var(--ink-2)}
 
-.toolbar{display:flex; flex-wrap:wrap; gap:7px; align-items:center; padding:10px 0 0}
-.toolbar .tbgap{position:relative; margin-left:10px}
-.toolbar .tbgap::before{
-  content:""; position:absolute; left:-6px; top:50%; transform:translateY(-50%);
-  width:1px; height:16px; background:var(--line-2); border-radius:1px;
+/* 工具区：所有按钮组 + 「更多」收进同一个容器，组之间只用细分隔线区分 */
+.toolbar{
+  grid-area:tools; display:flex; flex-direction:row; flex-wrap:wrap; align-items:center;
+  gap:2px 0; min-width:0; position:relative;
+  padding:4px 4px; background:var(--glass-sheen), var(--bg-0);
+  border:1px solid var(--glass-line); border-radius:var(--r-m);
+  box-shadow:inset 0 1px 0 var(--glass-hi);
 }
-@media (max-width:820px){.toolbar .tbgap{margin-left:0}.toolbar .tbgap::before{display:none}}
+.trow{display:contents}
+.tgroup{
+  display:flex; align-items:center; gap:5px; min-width:0;
+  padding:0; border:0; border-radius:0; background:transparent;
+}
+/* 组与组之间只用一条竖线分隔，组内 5px 等距 */
+.toolbar>.tgroup{padding:0 10px; border-left:1px solid var(--line)}
+.toolbar>.tgroup:first-child{border-left:0; padding-left:4px}
+.toolbar>.tgroup:last-of-type{padding-right:4px}
+.toolbar>.tgroup.grow{flex:1 1 auto; min-width:0}
+/* 组名不再自带右竖线（否则和组间分隔线并排成双线） */
+.tglabel{
+  flex:0 0 auto; font-size:10.5px; line-height:1; color:var(--ink-3); letter-spacing:.06em;
+  padding:0 1px 0 0; margin-right:2px; white-space:nowrap; user-select:none;
+}
+.tsep{width:1px; height:16px; background:var(--line); margin:0 1px}
+.spacer{display:none}
 
-.toolbar input[type=text]{
-  height:30px; padding:0 10px; box-sizing:border-box;
-  border-radius:var(--r-s); border:1px solid var(--line-2);
-  background:var(--glass); color:var(--ink-0);
-  font-size:12.5px; font-family:inherit; text-align:left;
-  transition:border-color .18s var(--ease), background .18s var(--ease);
+/* 「更多」：低频操作收纳，纯 CSS 展开，不额外占用顶栏高度 */
+.tmore{position:relative; margin-left:auto; flex:0 0 auto; padding-left:9px; border-left:1px solid var(--line)}
+.tmore>summary{
+  list-style:none; cursor:pointer; user-select:none;
+  display:inline-flex; align-items:center; gap:5px; height:27px; padding:0 10px;
+  font-size:11.5px; line-height:1; color:var(--ink-1); background:var(--bg-2);
+  border:1px solid var(--line-2); border-radius:var(--r-xs);
+  transition:background .18s var(--ease), border-color .18s var(--ease), color .18s var(--ease);
 }
-.toolbar input[type=text]:hover{border-color:rgba(255,255,255,.22)}
-.toolbar input[type=text]:focus{
-  outline:none; border-color:var(--primary);
-  background:var(--glass-2); box-shadow:0 0 0 3px var(--glow);
+.tmore>summary::-webkit-details-marker{display:none}
+.tmore>summary:hover{background:var(--bg-3); color:var(--ink-0); border-color:var(--line-3)}
+.tmore[open]>summary{background:var(--hover); border-color:var(--primary); color:var(--primary-3)}
+.tmore-pop{
+  position:absolute; right:0; top:calc(100% + 7px); z-index:70;
+  width:330px; display:flex; flex-direction:column; padding:4px 8px;
+  background:var(--bg-1); border:1px solid var(--line-2); border-radius:var(--r-m);
+  box-shadow:0 12px 28px rgba(0,0,0,.55);
+  transform-origin:top right;
+  animation:popIn .17s cubic-bezier(.22,.9,.3,1) both;
 }
-html[data-theme="light"] .toolbar input[type=text]:hover{border-color:rgba(15,23,38,.24)}
-.toolbar .skillpick{
-  flex:0 0 auto; width:92px; height:30px; padding:0 22px 0 8px;
-  border-radius:var(--r-s); border:1px solid var(--line-2);
-  background-color:var(--glass); color:var(--ink-1);
-  font-size:12.5px; font-family:inherit; text-align:center;
+@keyframes popIn{
+  from{opacity:0; transform:translateY(-6px) scale(.985)}
+  to{opacity:1; transform:none}
 }
-.toolbar .charname{flex:1 1 132px; min-width:104px}
-.toolbar .skillname{flex:1 1 132px; min-width:104px}
+.tmore-pop .tgroup{
+  display:flex; align-items:center; gap:3px;
+  padding:5px 0; background:transparent; border:0; border-bottom:1px solid var(--line);
+}
+.tmore-pop .tgroup:last-child{border-bottom:0}
+.tmore-pop .tglabel{
+  flex:0 0 50px; padding:0 0 0 2px; margin:0; border-right:0;
+}
+.tmore-pop button{height:24px; padding:0 8px}
+.tmore-pop .tool-switch{height:24px; margin-left:2px}
 
-/* ============ 按钮 ============ */
+header input[type=text],header select{
+  height:26px; font-size:11.5px; font-family:var(--font);
+  padding:0 7px; border:1px solid var(--line-2); border-radius:var(--r-xs);
+  background:var(--bg-2); color:var(--ink-0); outline:none;
+  transition:border-color .15s var(--ease);
+}
+header input[type=text]:hover,header select:hover{border-color:var(--line-3)}
+header input[type=text]:focus,header select:focus{border-color:var(--primary); box-shadow:0 0 0 2px var(--ring)}
+header input.charname{flex:0 1 236px; min-width:150px}
+header input.skillname{flex:0 1 176px; min-width:130px}
+header select{flex:0 0 auto; padding-right:20px}
+
+/* ---------- 按钮 ---------- */
 button{
-  font-family:inherit; font-size:12.5px; font-weight:600;
-  height:30px; padding:0 12px;
-  border-radius:var(--r-s); border:1px solid var(--line-2);
-  background:var(--glass); color:var(--ink-1);
-  cursor:pointer; white-space:nowrap;
-  transition:transform .18s var(--ease), border-color .18s var(--ease),
-             background .18s var(--ease), color .18s var(--ease), box-shadow .18s var(--ease);
+  font-family:var(--font); font-size:11.5px; line-height:1;
+  height:27px; padding:0 10px; cursor:pointer;
+  color:var(--ink-1); background:var(--bg-2);
+  border:1px solid var(--line-2); border-radius:var(--r-s);
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  white-space:nowrap; user-select:none;
+  transition:background .16s var(--ease), border-color .16s var(--ease), color .16s var(--ease),
+             transform .16s var(--ease), box-shadow .2s var(--ease);
 }
-button:hover{
-  border-color:var(--primary); color:var(--primary-2);
-  background:var(--glass-2); transform:translateY(-1px);
-  box-shadow:0 6px 18px -10px var(--glow);
+button:hover{background:var(--bg-3); color:var(--ink-0); border-color:var(--line-3)}
+button:active{background:var(--bg-4)}
+/* 悬停只抬 1px：动 transform / box-shadow，不触发布局重排 */
+button:not(:disabled):hover{transform:translateY(-1px); box-shadow:0 3px 10px -4px rgba(0,0,0,.55)}
+button:not(:disabled):active{transform:translateY(0); box-shadow:none}
+button:focus-visible{outline:2px solid var(--ring); outline-offset:1px}
+button:disabled{opacity:.42; cursor:not-allowed; background:var(--bg-2); color:var(--ink-2); border-color:var(--line); transform:none; box-shadow:none}
+/* 按钮内图标：统一 12.5px，悬停轻微放大 */
+button i[class*="fa-"]{font-size:12.5px; line-height:1; opacity:.9; transition:transform .22s var(--ease), opacity .22s var(--ease)}
+button:not(:disabled):hover i[class*="fa-"]{transform:scale(1.12); opacity:1}
+button.ghost{background:transparent; border-color:transparent; padding:0 9px}
+button.ghost:hover{background:var(--hover); border-color:transparent; color:var(--primary-3)}
+button.primary{background:var(--primary); border-color:var(--primary); color:#fff; font-weight:600}
+/* 「存档」是唯一主按钮：给它一道极慢的掠光，作为页面唯一的持续动效 */
+button.primary{position:relative; overflow:hidden}
+button.primary::after{
+  content:""; position:absolute; top:0; bottom:0; width:45%; pointer-events:none;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.22),transparent);
+  transform:translateX(-160%);
+  animation:sweep 6.5s cubic-bezier(.4,0,.2,1) infinite;
 }
-button:active{transform:translateY(0) scale(.985)}
-button:disabled{opacity:.4; cursor:not-allowed; transform:none; box-shadow:none}
-button:disabled:hover{border-color:var(--line-2); color:var(--ink-1); background:var(--glass)}
+@keyframes sweep{0%,72%{transform:translateX(-160%)}100%{transform:translateX(300%)}}
+button.primary:hover{background:var(--primary-2); border-color:var(--primary-2); color:#fff}
+button.primary:active{background:var(--primary)}
+button.warn{color:var(--danger); border-color:rgba(224,99,95,.35); background:transparent}
+button.warn:hover{background:rgba(224,99,95,.10); border-color:var(--danger); color:var(--danger)}
+button.tiny{height:22px; padding:0 7px; font-size:11px}
+.tbgap{margin-left:0}
 
-button.primary{
-  background:linear-gradient(135deg, var(--primary-2), var(--primary-3));
-  border-color:transparent; color:#fff;
-  box-shadow:0 6px 18px -10px var(--glow);
+/* 循环模式条 */
+.loopmode{display:flex; align-items:center; gap:4px}
+.loopmode .lm-on{
+  display:inline-flex; align-items:center; gap:5px; height:26px; padding:0 9px;
+  border:1px solid var(--line-2); border-radius:var(--r-xs); background:var(--bg-2);
+  font-size:11.5px; color:var(--ink-2); cursor:pointer; white-space:nowrap;
+  transition:border-color .15s var(--ease), color .15s var(--ease), background .15s var(--ease);
 }
-button.primary:hover{color:#fff; filter:brightness(1.08)}
-button.warn{color:var(--danger); border-color:rgba(255,107,107,.35); background:rgba(255,107,107,.08)}
-button.warn:hover{color:#fff; background:rgba(255,107,107,.85); border-color:transparent}
-button.ghost{background:var(--glass); color:var(--ink-1)}
-button.ghost:hover{color:var(--primary-2)}
-button.tiny{height:26px; padding:0 10px; font-size:11.5px; border-radius:6px}
-
-/* ============ 主容器与卡片 ============ */
-main{padding:16px 20px 0; max-width:1760px; margin:0 auto}
-
-.card{
-  position:relative;
-  /* 半透明 + 背景模糊：形成毛玻璃，能隐约看到背后漂浮的碎片 */
-  background:linear-gradient(180deg, rgba(23,29,39,.70), rgba(17,22,30,.62));
-  backdrop-filter:blur(14px) saturate(135%);
-  -webkit-backdrop-filter:blur(14px) saturate(135%);
-  border:1px solid var(--line);
-  border-radius:var(--r-l);
-  margin-bottom:14px;
+.loopmode .lm-on:hover{border-color:var(--line-3); color:var(--ink-0)}
+/* 复选框：统一外观，避免出现系统原生方框 */
+input[type=checkbox].cb, .loopmode .lm-on input, .tool-switch input{
+  appearance:none; -webkit-appearance:none;
+  width:15px; height:15px; margin:0; flex:0 0 auto; position:relative;
+  border:1px solid var(--line-3); border-radius:4px; background:var(--bg-0);
+  cursor:pointer;
+  transition:background .16s var(--ease), border-color .16s var(--ease), box-shadow .16s var(--ease);
+}
+.loopmode .lm-on input:hover, .tool-switch input:hover{border-color:var(--primary-2)}
+.loopmode .lm-on input:checked, .tool-switch input:checked{
+  background:var(--primary); border-color:var(--primary);
+}
+.loopmode .lm-on input:checked::after, .tool-switch input:checked::after{
+  content:""; position:absolute; left:4px; top:0.5px; width:4.5px; height:8.5px;
+  border-right:2px solid #fff; border-bottom:2px solid #fff;
+  transform:rotate(42deg);
+}
+.loopmode .lm-on input:focus-visible, .tool-switch input:focus-visible{
+  outline:none; box-shadow:0 0 0 2px var(--ring);
+}
+.loopmode.active .lm-on{border-color:var(--primary); color:var(--primary-3); background:var(--hover)}
+.loopmode .lm-tx{
+  font-family:var(--mono); font-size:11.5px; font-weight:600; color:var(--primary-3);
+  min-width:32px; height:26px; display:inline-flex; align-items:center; justify-content:center;
+  border:1px solid var(--line); border-radius:var(--r-xs); background:var(--bg-0);
+}
+.loopmode button{height:27px}
+/* 回合分页器：← T1 → 收成一个分段控件 */
+.pager{
+  display:inline-flex; align-items:center; height:27px; flex:0 0 auto;
+  border:1px solid var(--line-2); border-radius:var(--r-s); background:var(--bg-2);
   overflow:hidden;
-  /* 顶沿受光 / 底沿背光 / 投影，三层叠出玻璃厚度 */
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.07),
-    inset 0 -1px 0 rgba(0,0,0,.28),
-    0 1px 2px rgba(0,0,0,.35),
-    0 14px 34px -18px rgba(0,0,0,.9);
-  transition:border-color .3s var(--ease), box-shadow .3s var(--ease), transform .3s var(--ease);
-  animation:cardIn .62s var(--ease) both;
-  animation-delay:calc(var(--i, 0) * 55ms);
 }
-/* 次级卡片：更通透、更淡，让主战场（硬币/结果）更聚焦 */
-.card.card-subtle{
-  background:linear-gradient(180deg, rgba(23,29,39,.52), rgba(17,22,30,.46));
+.pager button{
+  height:25px; width:26px; padding:0; border:0; border-radius:0;
+  background:transparent; color:var(--ink-2); box-shadow:none;
 }
-.card.card-subtle>h2{background:linear-gradient(90deg, rgba(76,141,255,.06), transparent 60%)}
-html[data-theme="light"] .card{
-  background:linear-gradient(180deg, rgba(255,255,255,.80), rgba(246,248,251,.72));
-  backdrop-filter:blur(14px) saturate(115%);
-  -webkit-backdrop-filter:blur(14px) saturate(115%);
+.pager button:not(:disabled):hover{background:var(--hover); color:var(--primary-3); transform:none; box-shadow:none}
+.pager button:disabled{background:transparent; border:0; color:var(--ink-3); opacity:1; cursor:not-allowed}
+.pager .lm-tx{
+  min-width:40px; width:auto; height:25px; padding:0 4px; margin:0;
+  border:0; border-left:1px solid var(--line); border-right:1px solid var(--line);
+  border-radius:0; background:transparent;
 }
-/* 卡片内的装饰层：鼠标光晕 / 玻璃碎片 / 掠过光带 */
-.card>.glow{
-  position:absolute; inset:0; z-index:0; pointer-events:none; opacity:0;
-  background:radial-gradient(300px circle at var(--mx,50%) var(--my,0%),
-             rgba(76,141,255,.12), rgba(76,141,255,.02) 55%, transparent 72%);
-  transition:opacity .35s var(--ease);
-}
-.card:hover>.glow{opacity:1}
-.card>.cshards{position:absolute; inset:0; z-index:0; pointer-events:none; overflow:hidden; opacity:.55}
-.card>.cshards i{
-  position:absolute; display:block;
-  width:var(--w); height:var(--h);
-  background:linear-gradient(135deg, rgba(156,196,255,.42), rgba(76,141,255,.05));
-  clip-path:polygon(0 0,100% 20%,80% 100%,9% 76%);
-  opacity:0;
-  animation:cShard var(--dur) ease-in-out var(--dly) infinite;
-}
-@keyframes cShard{
-  0%,100%{opacity:0; transform:translateY(3px) rotate(0deg) scale(.9)}
-  22%{opacity:.8}
-  55%{opacity:.35; transform:translateY(-8px) rotate(var(--r)) scale(1)}
-  85%{opacity:.7}
-}
-/* 悬停时一道光带掠过 */
-/* 内容层压在装饰层之上 */
-.card>h2,.card>.body{position:relative; z-index:1}
-
-/* 悬停：边框提亮 + 轻微抬起，不做夸张位移 */
-.card:hover{
-  border-color:var(--line-2);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.11),
-    inset 0 -1px 0 rgba(0,0,0,.28),
-    0 0 0 1px rgba(76,141,255,.10),
-    0 22px 46px -20px rgba(0,0,0,.95);
-  /* 抬起 + 极轻微倾斜，像被轻轻碰了一下 */
-  transform:translateY(-3px) scale(1.004) rotate(-.15deg);
-  transition:transform .42s var(--ease-spring), border-color .3s var(--ease), box-shadow .3s var(--ease);
-}
-@keyframes numFlash{
+.pager .lm-tx.pulse{animation:txPulse .42s var(--ease)}
+@keyframes txPulse{
   0%{transform:scale(1)}
-  32%{transform:scale(1.055)}
+  35%{transform:scale(1.18); color:var(--primary-3)}
   100%{transform:scale(1)}
 }
-.numflash{animation:numFlash .42s var(--ease)}
-@keyframes cardIn{
-  from{opacity:0; transform:translateY(18px)}
-  to{opacity:1; transform:translateY(0)}
-}
 
-.card>h2{
-  margin:0; padding:10px 16px;
-  backdrop-filter:blur(6px);
-  font-size:13.5px; font-weight:700; letter-spacing:.04em;
-  color:var(--ink-0);
-  background:linear-gradient(90deg, rgba(76,141,255,.10), rgba(76,141,255,0) 60%);
-  border-bottom:1px solid var(--line);
-  display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap;
+/* 开场动画开关 */
+.tool-switch{
+  display:inline-flex; align-items:center; gap:5px; height:26px; padding:0 9px;
+  border:1px solid var(--line-2); border-radius:var(--r-xs); background:var(--bg-2);
+  font-size:11.5px; color:var(--ink-2); cursor:pointer; white-space:nowrap;
 }
-.card>h2 .ttl{white-space:nowrap}
-/* 折叠：点标题栏收起内容 */
-.card>h2{cursor:pointer; user-select:none}
-.card>h2::after{
-  content:"▾"; margin-left:8px; font-size:11px; color:var(--ink-3);
-  transition:transform .25s var(--ease); flex:0 0 auto;
-}
-.card.collapsed>h2::after{transform:rotate(-90deg)}
-.card.collapsed>.body{display:none}
-.card.collapsed>h2{border-bottom-color:transparent}
-/* 备注分两行时整体居中排在标题下方 */
-.card>h2 .hint-2line{flex-basis:100%; justify-content:center; text-align:center; line-height:1.35; font-size:10.5px}
-.card>h2::before{
-  content:""; width:3px; height:14px; border-radius:2px; margin-right:9px;
-  background:linear-gradient(180deg, var(--primary-2), var(--primary-3));
-  box-shadow:0 0 10px var(--glow);
-  flex:0 0 auto;
-}
-.card>h2 .hint{font-size:11.5px; font-weight:400; color:var(--ink-3); display:flex; align-items:center; gap:8px}
-.card .body{padding:14px 16px}
+.tool-switch:hover{border-color:var(--line-3); color:var(--ink-0)}
+.tool-switch input{width:13px; height:13px; margin:0; accent-color:var(--primary); cursor:pointer}
 
-/* ============ 工作区布局（2.0 新） ============ */
-.workspace{
-  display:grid;
-  grid-template-columns:296px minmax(0,1fr);
-  gap:14px;
-  align-items:start;
-  margin-bottom:14px;
+/* ---------- 存储警告 ---------- */
+#storeWarn{
+  display:none;
+  max-width:960px; margin:10px auto 0; padding:9px 14px;
+  border:1px solid rgba(224,99,95,.4); border-left:3px solid var(--danger);
+  border-radius:var(--r-s); background:var(--warn-bg); color:var(--ink-1); font-size:12px;
 }
-.workspace .card{margin-bottom:0}
-.ws-right{display:flex; flex-direction:column; gap:14px; min-width:0}
+#storeWarn.on{display:block}
 
-/* 左栏：技能参数，窄而长，单列排布 */
-.card-params .kv{grid-template-columns:minmax(0,1fr)}
-.card-params .kv .item{grid-template-columns:96px minmax(0,1fr)}
-.card-params .kv .item>label{font-size:11.5px; padding:0 4px}
+/* ---------- 主体布局：内容区收窄居中，不再铺满整屏 ---------- */
+main{max-width:960px; margin:0 auto; padding:16px 22px 40px; display:flex; flex-direction:column; gap:12px}
+/* 工作区：左列输入（技能参数 / 全局设置），右列常驻结果，硬币表横跨整行 */
+.workspace{display:grid; grid-template-columns:minmax(0,1fr) 336px; gap:12px; align-items:start}
+.ws-left{display:flex; flex-direction:column; gap:12px; min-width:0}
+.ws-right{position:sticky; top:calc(var(--hd-h, 92px) + 12px); display:flex; flex-direction:column; gap:12px; min-width:0}
+.card-coins{grid-column:1/-1}
+/* 卡片最大宽度：单列布局（窄视口 / 高 DPI 缩放）下，参数卡不再被拉满整行 */
+/* 默认铺满容器；单列布局时再统一收窄居中（见 @media max-width:1357px，对应 zoom 1.15 后的实际列宽） */
+.ws-left>.card,
+main>.card,
+main>.workspace>.card{width:100%}
 
-/* 右侧：全局设置压成扁条，多列横排 */
-.card-global .body{padding:10px 14px}
-.card-global fieldset{margin:0; padding:6px 10px 8px}
-.card-global fieldset+fieldset{margin-top:8px}
-.card-global .kv{grid-template-columns:repeat(auto-fit,minmax(196px,1fr)); gap:5px 10px}
-.card-global .kv .item{grid-template-columns:104px minmax(0,1fr)}
-.card-global .kv .item>label{font-size:11.5px}
-
-@media (max-width:1180px){
-  .workspace{grid-template-columns:minmax(0,1fr)}
-  .card-params .kv{grid-template-columns:repeat(2,minmax(0,1fr))}
-}
-@media (max-width:680px){
-  .card-params .kv{grid-template-columns:minmax(0,1fr)}
-}
-
-/* ============ 字段网格 ============ */
-fieldset{border:1px solid var(--line); border-radius:var(--r-m); margin:0 0 10px; padding:8px 10px 10px; background:rgba(255,255,255,.012)}
-fieldset:last-child{margin-bottom:0}
-legend{
-  font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
-  color:var(--ink-3); padding:0 6px;
-}
-
-.kv{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px 12px}
-.kv .item{display:grid; grid-template-columns:132px minmax(0,1fr); align-items:center; gap:8px}
-.kv .item[hidden]{display:none}
-.kv .item>label{
-  background:var(--label-bg); color:var(--label-fg);
-  padding:0 8px; border-radius:var(--r-s); height:28px; box-sizing:border-box;
-  display:flex; align-items:center; justify-content:center; text-align:center;
-  font-weight:600; font-size:12px; border:1px solid var(--line);
-  white-space:nowrap; overflow:hidden;
-}
-
-input[type=number],input[type=text],select{
-  font-family:var(--font); font-size:12.5px; padding:0 8px; height:28px; box-sizing:border-box;
-  border-radius:var(--r-s); border:1px solid var(--line-2);
-  background:var(--bg-3); color:var(--ink-0);
-  width:100%; min-width:0; text-align:center;
-  transition:border-color .16s var(--ease), box-shadow .16s var(--ease), background .16s var(--ease);
-}
-input[type=number]{text-align:center; -moz-appearance:textfield; appearance:textfield}
-input[type=number]::-webkit-outer-spin-button,
-input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none; margin:0}
-input:hover,select:hover{border-color:rgba(255,255,255,.22)}
-html[data-theme="light"] input:hover,html[data-theme="light"] select:hover{border-color:rgba(15,23,38,.24)}
-input:focus,select:focus{
-  outline:none; border-color:var(--primary);
-  background:var(--bg-2); box-shadow:0 0 0 3px var(--glow);
-  animation:focusRing .55s var(--ease);
-}
-/* 聚焦瞬间荡开一圈光环 */
-@keyframes focusRing{
-  0%{box-shadow:0 0 0 1px var(--glow)}
-  55%{box-shadow:0 0 0 7px rgba(76,141,255,.10)}
-  100%{box-shadow:0 0 0 3px var(--glow)}
-}
-input.man,select.man{background:var(--in-bg); color:var(--in-fg); border-color:var(--in-line); font-weight:600}
-input.man:focus,select.man:focus{box-shadow:0 0 0 3px rgba(76,141,255,.28)}
-
-/* 下拉：去掉原生外观，文字居中，自绘箭头 */
-select option{padding:6px 10px; text-align:center; text-align-last:center; font-size:12.5px; background:var(--bg-2); color:var(--ink-0)}
-select{
-  -webkit-appearance:none; -moz-appearance:none; appearance:none;
-  text-align:center; text-align-last:center;
-  background-repeat:no-repeat; background-position:right 8px center; background-size:9px 6px;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M0 0h9L4.5 6z' fill='%238592a6'/%3E%3C/svg%3E");
-}
-
-/* 自动计算结果的展示格 */
-.out{
-  background:var(--auto-bg); border:1px solid var(--auto-line); border-radius:var(--r-s);
-  height:28px; padding:0 8px; width:100%; box-sizing:border-box;
-  display:flex; align-items:center; justify-content:center; text-align:center;
-  font-weight:700; color:var(--auto-fg); font-variant-numeric:tabular-nums;
-}
-.out.blank{color:var(--ink-3); font-weight:400}
-
-/* ============ 结果区 ============ */
-.resultbar{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; margin-bottom:12px}
-.bigres{
-  border-radius:var(--r-m); padding:14px 18px; text-align:center;
-  background:linear-gradient(160deg, var(--sum-bg), rgba(245,165,36,.04));
-  border:1px solid var(--sum-line);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
-}
-.bigres .t{font-size:11.5px; font-weight:700; color:var(--ink-2); letter-spacing:.06em}
-.bigres .v{
-  font-size:44px; font-weight:800; line-height:1.08;
-  letter-spacing:-.025em;
-  font-variant-numeric:tabular-nums;
-  background:linear-gradient(180deg, #ffffff 6%, var(--sum-fg) 92%);
-  -webkit-background-clip:text; background-clip:text; color:transparent;
-  filter:drop-shadow(0 2px 18px rgba(245,165,36,.22));
-}
-html[data-theme="light"] .bigres .v{
-  background:linear-gradient(180deg, #b06a10 6%, #8a4f04 92%);
-  -webkit-background-clip:text; background-clip:text;
-}
-.bigres.alt{
-  background:linear-gradient(160deg, var(--auto-bg), rgba(34,197,94,.04));
-  border-color:var(--auto-line);
-}
-.bigres.alt .v{
-  background:linear-gradient(180deg, #ffffff 6%, var(--auto-fg) 92%);
-  -webkit-background-clip:text; background-clip:text; color:transparent;
-  filter:drop-shadow(0 2px 18px rgba(34,197,94,.22));
-}
-html[data-theme="light"] .bigres.alt .v{
-  background:linear-gradient(180deg, #0d8a5f 6%, #06694a 92%);
-  -webkit-background-clip:text; background-clip:text;
-}
-
-.subres{display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px}
-@media (max-width:1240px){.subres{grid-template-columns:repeat(4,minmax(0,1fr))}}
-@media (max-width:700px){.subres{grid-template-columns:repeat(2,minmax(0,1fr))}}
-.card-result .subres{grid-template-columns:repeat(4,minmax(0,1fr))}
-.card-loops .subres{margin-bottom:14px}
-.subres .box{
-  border:1px solid var(--line); border-radius:var(--r-m); background:var(--glass);
-  padding:8px 10px; text-align:center;
-  display:flex; flex-direction:column; justify-content:center; min-height:62px;
+/* ---------- 卡片 ---------- */
+.card{
+  position:relative; min-width:0;
+  background:var(--glass-sheen), var(--bg-1);
+  border:1px solid var(--line);
+  box-shadow:inset 0 1px 0 var(--glass-hi), 0 2px 7px -4px rgba(0,0,0,.55);
+  border-radius:var(--r-m);
+  scroll-margin-top:calc(var(--hd-h) + 14px);
   transition:border-color .2s var(--ease), background .2s var(--ease);
 }
-.subres .box:hover{border-color:var(--line-2); background:var(--glass-2)}
-.subres .box .t{font-size:11px; color:var(--ink-3); font-weight:600; letter-spacing:.02em}
-.subres .box .v{font-size:19px; font-weight:800; color:var(--ink-0); font-variant-numeric:tabular-nums}
-.subres .box.hl .v{color:var(--primary-2)}
-
-/* ============ 循环数据 ============ */
-.loops{display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:12px; margin-top:14px}
-.loopgrp{border:1px solid var(--line); border-radius:var(--r-m); overflow:hidden; background:var(--glass)}
-.loopgrp>h3{
-  margin:0; padding:8px 12px; font-size:12px; font-weight:700;
-  background:linear-gradient(90deg, rgba(76,141,255,.12), transparent);
-  color:var(--ink-1); border-bottom:1px solid var(--line);
-  display:flex; justify-content:center; align-items:center; gap:8px;
+.card:hover{border-color:var(--line-2)}
+/* 悬停时卡片顶边浮出一道极淡的蓝线（只过渡 opacity） */
+.card::after{
+  content:""; position:absolute; left:8px; right:8px; top:-1px; height:1px;
+  pointer-events:none; opacity:0; transition:opacity .45s var(--ease);
+  background:linear-gradient(90deg,transparent,var(--primary-3) 22%,var(--primary-3) 78%,transparent);
 }
-.loopgrp>h3 .s{font-size:15px; font-weight:800; color:var(--primary-2); font-variant-numeric:tabular-nums}
-.loopgrp .cells{display:flex; flex-direction:column; gap:8px; padding:10px}
-.looprow{display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:6px}
-.loopgrp .cells input{height:28px; padding:0 4px}
+.card:hover::after{opacity:.4}
+
+/* 折叠箭头过渡（不做入场透明度动画，避免长页面残影与重绘） */
+.card>h2{
+  margin:0; padding:10px 14px;
+  display:flex; align-items:baseline; gap:9px; flex-wrap:wrap;
+  font-size:12.5px; font-weight:600; color:var(--ink-0); letter-spacing:.01em;
+  border-bottom:1px solid var(--line);
+  cursor:pointer; user-select:none;
+  border-radius:var(--r-m) var(--r-m) 0 0;
+  transition:color .15s var(--ease);
+}
+.card>h2:hover{color:var(--primary-3)}
+.card>h2 .ttl{color:inherit}
+.card>h2>i.ico{
+  align-self:center; flex:0 0 auto; font-size:11.5px; line-height:1;
+  color:var(--ink-2); transition:color .18s var(--ease), transform .18s var(--ease);
+}
+.card>h2:hover>i.ico{color:var(--primary-3); transform:translateY(-.5px)}
+.card>h2 .hint{flex:1 1 auto; min-width:0}
+.card>h2::after{
+  content:""; margin-left:auto; align-self:center; flex:0 0 auto;
+  width:6px; height:6px; margin-right:2px;
+  border-right:1.5px solid var(--ink-3); border-bottom:1.5px solid var(--ink-3);
+  transform:rotate(45deg) translate(-1px,-1px);
+  transition:transform .26s var(--ease), border-color .26s var(--ease);
+}
+.card.collapsed>h2::after{transform:rotate(-45deg) translate(-1px,1px)}
+.card>h2:hover::after{border-color:var(--primary-3)}
+.card.collapsed>h2{border-bottom-color:transparent; border-radius:var(--r-m)}
+.card .body{padding:12px 14px 14px}
+.card.collapsed .body{display:none}
+.card .hint{font-size:11.5px; font-weight:400; color:var(--ink-3); letter-spacing:0}
+.card .hint-2line{line-height:1.5; white-space:normal}
+
+/* ---------- 表单块 ---------- */
+fieldset{
+  margin:0 0 12px; padding:10px 12px 12px;
+  border:1px solid var(--line); border-radius:var(--r-m); background:var(--bg-1);
+}
+fieldset:last-child{margin-bottom:0}
+legend{
+  padding:0 6px; font-size:11.5px; font-weight:600; color:var(--ink-2); letter-spacing:.02em;
+}
+/* 列宽自适应：窄卡片两列，宽卡片自动排三列，避免标签与控件被拉出大片空档 */
+.kv{display:grid; grid-template-columns:repeat(auto-fit,minmax(196px,1fr)); gap:6px 14px}
+/* 每行 = 标签（宽度贴合文字）+ 固定宽度控件列：
+   标签不再撑满整格，控件在列内靠右对齐，同一列所有输入框右边线严格对齐 */
+.item{
+  display:grid; grid-template-columns:minmax(0,max-content) minmax(0,72px);
+  align-items:center; justify-content:space-between; gap:8px; min-width:0;
+}
+.item>label:not(.switch){
+  min-width:0; min-height:26px; display:flex; align-items:center;
+  padding:0 7px; border:1px solid var(--line); border-radius:var(--r-xs);
+  background:var(--label-bg); color:var(--label-fg);
+  font-size:10.5px; font-weight:500; letter-spacing:.01em; line-height:1.15;
+  white-space:normal; overflow:hidden;
+}
+.item label.wide{white-space:normal}
+/* 标签超过 6 个字时折两行，不再截断成「重投是否参与拼」 */
+.item label[data-two]{white-space:normal; line-height:1.15; font-size:10.5px}
+/* 输入框固定窄宽，与「是 / 否」同一右边界 */
+.item input,.item select,.item .out{width:100%; min-width:0; max-width:none}
+
+/* ---------- 是/否 开关：56×22，右边界仍与上方输入框对齐 ---------- */
+.switch{
+  position:relative; display:block;
+  width:56px; height:22px; flex:0 0 auto;
+  justify-self:end;
+  cursor:pointer; user-select:none; -webkit-tap-highlight-color:transparent;
+}
+/* 真控件盖在最上层，键盘可聚焦、屏幕阅读器可读 */
+.switch>input{
+  position:absolute; inset:0; width:100%; height:100%; margin:0; padding:0;
+  opacity:0; cursor:pointer; z-index:3;
+}
+.switch .rail{
+  position:absolute; inset:0; border-radius:999px; overflow:hidden;
+  background:var(--sw-rail-off); border:1px solid var(--line-2);
+  box-shadow:inset 0 1px 1.5px rgba(0,0,0,.18);
+  transition:background .3s var(--ease), border-color .3s var(--ease), box-shadow .3s var(--ease);
+}
+.switch .knob{
+  position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%;
+  background:var(--sw-knob-off);
+  box-shadow:0 1px 3px rgba(0,0,0,.3);
+  /* 回弹曲线：滑块落位时略有回抽，观感更「弹性」 */
+  transition:transform .34s cubic-bezier(.34,1.46,.52,1), background .26s var(--ease), box-shadow .26s var(--ease);
+}
+/* 开：滑块滑到右侧（行程 = 56 - 边框2 - 滑块16 - 左右各2 = 34）*/
+.switch>input:checked~.rail{background:var(--primary); border-color:var(--primary); box-shadow:inset 0 1px 2px rgba(0,0,0,.18)}
+.switch>input:checked~.rail .knob{transform:translateX(34px); background:var(--sw-knob-on); box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.switch:hover .rail{border-color:var(--line-3)}
+.switch>input:checked~.rail{border-color:var(--primary-3)}
+.switch>input:focus-visible~.rail{box-shadow:0 0 0 2px var(--ring)}
+.switch>input:active~.rail .knob{box-shadow:0 0 0 6px var(--hover), 0 1px 3px rgba(0,0,0,.35)}
+/* 硬币表内：同一开关，居中放在单元格里 */
+td.cell-in{vertical-align:middle}
+td.cell-in .switch{margin:0 auto; justify-self:auto}
+/* 减少动态偏好：直接切换，不做动画 */
+@media (prefers-reduced-motion:reduce){
+  .switch .rail,.switch .knob{transition:none}
+}
+
+/* 输入控件 */
+input,select,textarea{font-family:var(--font)}
+input[type=number]{
+  height:28px; width:100%; min-width:0;
+  padding:0 9px; font-size:12.5px; text-align:right;
+  border:1px solid var(--line-2); border-radius:var(--r-s);
+  background:var(--bg-2); color:var(--ink-0); outline:none;
+  font-variant-numeric:tabular-nums;
+  transition:border-color .15s var(--ease), background .15s var(--ease);
+}
+input[type=number]:hover{border-color:var(--line-3)}
+input[type=number]:focus{border-color:var(--primary); box-shadow:0 0 0 2px var(--ring); background:var(--bg-2)}
+select{
+  height:28px; padding:0 24px 0 9px; font-size:12.5px;
+  border:1px solid var(--line-2); border-radius:var(--r-s);
+  background-color:var(--bg-2); color:var(--ink-0); outline:none; cursor:pointer;
+  appearance:none; -webkit-appearance:none;
+  background-image:linear-gradient(45deg,transparent 50%,var(--ink-3) 50%),linear-gradient(135deg,var(--ink-3) 50%,transparent 50%);
+  background-position:calc(100% - 13px) 12px,calc(100% - 9px) 12px;
+  background-size:4px 4px,4px 4px; background-repeat:no-repeat;
+  transition:border-color .15s var(--ease);
+}
+select:hover{border-color:var(--line-3)}
+#archSort,#archFilter{
+  background-image:none; appearance:auto; -webkit-appearance:auto; padding-right:8px;
+}
+#archSort option,#archFilter option{background:var(--bg-2); color:var(--ink-0)}
+select:focus{border-color:var(--primary); box-shadow:0 0 0 2px var(--ring)}
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none; margin:0}
+input[type=number]{-moz-appearance:textfield; appearance:textfield}
+input[type=checkbox]{accent-color:var(--primary); cursor:pointer}
+
+/* 语义着色：浅蓝 = 手动输入，浅绿 = 自动计算 */
+input.man,select.man{
+  background:var(--in-bg); color:var(--in-fg); border-color:var(--in-line); font-weight:600;
+}
+select.man{background-color:var(--in-bg)}
+select.man option{background:var(--bg-2); color:var(--ink-0)}
+input.man:focus,select.man:focus{border-color:var(--primary); box-shadow:0 0 0 2px var(--ring)}
+.out{
+  flex:1 1 auto; min-width:0; height:28px; display:flex; align-items:center;
+  padding:0 9px; font-size:12.5px; font-weight:600; text-align:right; justify-content:flex-end;
+  background:var(--auto-bg); color:var(--auto-fg);
+  border:1px solid var(--auto-line); border-radius:var(--r-s);
+  font-variant-numeric:tabular-nums;
+}
+.numflash{animation:numFlash .4s var(--ease)}
+@keyframes numFlash{0%{background:var(--primary); color:#fff}100%{}}
+
+/* ---------- 硬币表 ---------- */
+.tblwrap{overflow-x:auto; border:1px solid var(--line); border-radius:var(--r-m); background:var(--bg-1)}
+table{border-collapse:collapse; width:100%; font-size:12px}
+th,td{padding:0; border-bottom:1px solid var(--line); border-right:1px solid var(--line); height:32px}
+th:last-child,td:last-child{border-right:none}
+tbody tr:last-child td{border-bottom:none}
+thead th{
+  position:sticky; top:0; z-index:2;
+  background:var(--bg-3); color:var(--ink-2);
+  font-size:11px; font-weight:600; letter-spacing:.02em;
+  padding:1px 8px 2px; text-align:center; white-space:nowrap;
+}
+thead th small{display:block; font-size:9.5px; font-weight:400; color:var(--ink-3); letter-spacing:.04em; line-height:1.4}
+#coinTable{min-width:740px; table-layout:fixed}
+#coinTable th,#coinTable td{width:auto}
+#coinTable th:first-child,#coinTable td:first-child{width:62px}
+tbody tr:hover td{background:var(--bg-2)}
+tbody tr:hover td.cell-in,tbody tr:hover td.cell-auto{background:inherit}
+td.lab{
+  text-align:center; font-size:11.5px; font-weight:600; color:var(--ink-2);
+  background:var(--label-bg); white-space:nowrap;
+}
+td.cell-in{padding:0; background:var(--in-bg)}
+td.cell-in input,td.cell-in select{
+  width:100%; height:31px; border:none; border-radius:0;
+  background-color:transparent; color:var(--in-fg);
+  font-size:12px; text-align:right; padding:0 7px; font-weight:600;
+}
+td.cell-in select{text-align:center; background-image:none; padding:0 4px; appearance:auto; -webkit-appearance:auto}
+td.cell-in select option{background:var(--bg-2); color:var(--ink-0)}
+td.cell-in input:focus,td.cell-in select:focus{
+  outline:2px solid var(--primary); outline-offset:-2px; box-shadow:none; border-radius:0;
+}
+td.cell-auto{
+  padding:0 8px; text-align:right; background:var(--auto-bg); color:var(--auto-fg);
+  font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap;
+}
+td.cell-auto.blank{color:var(--ink-3)}
+tr.sep td{height:9px; background:var(--bg-3); border-bottom:1px solid var(--line); padding:0}
+tfoot td{
+  height:32px; text-align:center; background:var(--bg-3); color:var(--ink-1);
+  font-weight:600; font-variant-numeric:tabular-nums;
+}
+tfoot td:first-child{background:var(--label-bg); font-weight:700; color:var(--ink-1)}
+tfoot td.grand{background:var(--sum-bg); color:var(--sum-fg); font-weight:700; font-size:13px}
+tr.hide{display:none}
+tr.coinempty td{background:var(--bg-1); border-bottom:none}
+.empty-state{padding:34px 16px; text-align:center}
+.empty-title{font-size:13px; font-weight:600; color:var(--ink-1)}
+.empty-sub{font-size:11.5px; color:var(--ink-3); margin-top:4px}
+
+table.detail{min-width:1900px; font-size:11.5px}
+table.detail th{padding:5px 7px; white-space:nowrap}
+table.detail td{height:29px; padding:0 7px; text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap}
+table.detail td.c{text-align:center}
+table.detail .raw{color:var(--ink-3)}
+table.detail .loss{color:var(--warn)}
+
+/* ---------- 结果区 ---------- */
+.card-result{border-color:var(--line-2)}
+/* 宽屏双栏时右栏吸附：滚长表也能一直看到结果 */
+@media (min-width:1358px){
+  .ws-right{position:sticky; top:calc(var(--hd-h, 90px) + 14px); align-self:start; max-height:calc(100vh * var(--zinv) - var(--hd-h, 90px) - 28px); overflow:auto; scrollbar-width:thin}
+}
+/* 拼点点数与总伤害并排一行，各占一半 */
+.resultbar{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px}
+.bigres{
+  border:1px solid var(--sum-line); border-radius:var(--r-s);
+  background:var(--sum-bg); padding:10px 12px; min-width:0;
+}
+.bigres.alt{border-color:var(--line-2); background:var(--bg-2)}
+.bigres .t{font-size:11px; color:var(--ink-2); letter-spacing:.02em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.bigres .v{
+  font-size:26px; font-weight:700; line-height:1.15; margin-top:2px;
+  color:var(--sum-fg); font-variant-numeric:tabular-nums; letter-spacing:-.01em;
+}
+.bigres.alt .v{color:var(--primary-3)}
+
+.subres{display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; margin-top:10px}
+.subres .box{
+  border:1px solid var(--line); border-radius:var(--r-s); background:var(--bg-2);
+  padding:8px 11px;
+}
+.subres .box.hl{background:var(--bg-2); border-color:var(--line-2)}
+.subres .box .t{font-size:10.5px; color:var(--ink-3); line-height:1.4}
+.subres .box .v{
+  font-size:18px; font-weight:700; color:var(--ink-0); margin-top:1px;
+  font-variant-numeric:tabular-nums;
+}
+.subres .box.hl .v{color:var(--primary-3)}
+
+.legend{
+  display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  margin-top:12px; padding-top:10px; border-top:1px solid var(--line);
+  font-size:11px; color:var(--ink-3);
+}
+.legend span{display:inline-flex; align-items:center; gap:5px}
+.legend i{width:8px; height:8px; border-radius:2px; display:inline-block}
+
+/* ---------- 循环数据 ---------- */
+.loops{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-top:12px}
+.loops>.loopgrp:last-child{grid-column:1 / -1}
+@media (max-width:828px){
+  .loops{grid-template-columns:minmax(0,1fr)}
+  .loops>.loopgrp:last-child{grid-column:auto}
+}
+.loopgrp{border:1px solid var(--line); border-radius:var(--r-m); background:var(--bg-2); overflow:hidden}
+.loopgrp h3{
+  margin:0; padding:9px 13px; font-size:12px; font-weight:600; color:var(--ink-1);
+  display:flex; align-items:center; gap:8px;
+  border-bottom:1px solid var(--line); background:var(--bg-3);
+}
+.loopgrp h3 .s{
+  margin-left:auto; font-size:12.5px; font-weight:700; color:var(--primary-3);
+  font-variant-numeric:tabular-nums;
+}
+.loopgrp .cells{padding:12px 12px 6px}
+.looprow{display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:6px; margin-bottom:6px}
 .loopcell{display:flex; flex-direction:column; gap:3px; min-width:0}
-.loopcell .n{font-size:10px; color:var(--ink-3); text-align:center; line-height:1.2; white-space:nowrap}
-
-/* 拼点行：紫调区分，与伤害行一眼可分 */
-.clashrow input{
-  background:rgba(139,92,246,.09); border-color:rgba(139,92,246,.22); color:#b9a8ff;
-}
+.loopcell .n{font-size:9.5px; color:var(--ink-3); text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.loopcell input{height:26px; font-size:11.5px; padding:0 5px; text-align:center}
 .clashcell{position:relative; display:flex; min-width:0}
-.clashcell input{width:100%}
-.clashcell input:placeholder-shown{color:var(--ink-3)}
-/* × 按钮：把该回合标记为「不参与平均」 */
+.clashcell input{width:100%; height:26px; font-size:11.5px; padding:0 17px 0 5px; text-align:center}
 .clashcell .skip{
-  position:absolute; right:2px; top:50%; transform:translateY(-50%);
-  width:15px; height:15px; padding:0; line-height:1;
-  border-radius:50%; border:none; background:rgba(255,255,255,.10);
-  color:var(--ink-3); font-size:11px; cursor:pointer; opacity:0;
-  transition:opacity .15s var(--ease), background .15s var(--ease), color .15s var(--ease);
+  position:absolute; right:1px; top:1px; width:15px; height:24px; padding:0;
+  border:none; background:transparent; color:var(--ink-3); font-size:12px; border-radius:0;
+  height:24px; line-height:1;
 }
-.clashcell:hover .skip{opacity:1}
-.clashcell .skip:hover{background:rgba(255,107,107,.8); color:#fff}
-
-.loopbars{
-  display:grid; grid-template-columns:repeat(6,minmax(0,1fr));
-  gap:6px; height:42px; align-items:end; margin-top:2px;
-}
+.clashcell .skip:hover{background:rgba(232,106,106,.14); color:var(--danger)}
 .loopavg{
   display:flex; align-items:center; justify-content:space-between;
-  padding:0 12px 10px; font-size:11.5px; color:var(--ink-3);
+  padding:9px 13px; border-top:1px solid var(--line); background:var(--bg-1);
+  font-size:11.5px; color:var(--ink-3);
 }
-.loopavg b{font-size:15px; font-weight:800; color:var(--primary-2); font-variant-numeric:tabular-nums}
-.loopbars i{
-  display:block; min-height:2px; border-radius:4px 4px 2px 2px;
-  background:linear-gradient(180deg, var(--primary-2), var(--primary-3));
-  opacity:.75; transition:height .35s var(--ease), opacity .2s var(--ease);
-}
-.loopbars i:hover{opacity:1}
+.loopavg b{font-size:13px; color:var(--ink-0); font-variant-numeric:tabular-nums}
+.loopbars{display:none}
 
-/* ============ 表格 ============ */
-table{border-collapse:separate; border-spacing:0; width:100%; font-size:12px}
-.tblwrap{overflow-x:auto; border-radius:var(--r-m); border:1px solid var(--line)}
-th,td{padding:0; border-bottom:1px solid var(--line); border-right:1px solid var(--line)}
-th:last-child,td:last-child{border-right:none}
-thead th{
-  background:var(--bg-3); color:var(--ink-1);
-  font-weight:700; padding:7px 4px; height:34px;
-  text-align:center; vertical-align:middle; font-size:11.5px;
-  position:sticky; top:0; z-index:2;
-  border-bottom:1px solid var(--line-2);
-}
-thead th small{display:block; font-weight:400; color:var(--ink-3); font-size:10px}
-tbody td{padding:0 4px; height:28px; text-align:center; vertical-align:middle}
-tbody tr{transition:background .16s var(--ease)}
-tbody tr:hover td{background:rgba(76,141,255,.05)}
-table#coinTable{table-layout:fixed; min-width:1020px}
-table#coinTable col:nth-child(1){width:76px}
-table#coinTable col:nth-child(2){width:80px}
-table#coinTable col:nth-child(3){width:92px}
-table#coinTable col:nth-child(4){width:88px}
-table#coinTable col:nth-child(5){width:92px}
-table#coinTable col:nth-child(6){width:92px}
-table#coinTable col:nth-child(7){width:104px}
-table#coinTable col:nth-child(8){width:80px}
-table#coinTable col:nth-child(9){width:72px}
-table#coinTable col:nth-child(10){width:80px}
-table#coinTable col:nth-child(11){width:88px}
-table#coinTable col:nth-child(12){width:92px}
-
-td.lab{
-  background:var(--label-bg); color:var(--label-fg);
-  font-weight:700; text-align:center; padding:0 4px;
-  white-space:nowrap; font-size:11.5px;
-}
-td.cell-in{background:var(--in-bg); padding:0}
-td.cell-in input,td.cell-in select{
-  border:none; border-radius:0; background-color:transparent; color:var(--in-fg);
-  font-weight:600; text-align:center; padding:0 6px; width:100%; height:27px; box-sizing:border-box;
-}
-td.cell-in select{padding:0}
-td.cell-in input:focus,td.cell-in select:focus{outline:2px solid var(--primary); outline-offset:-2px; box-shadow:none}
-td.cell-auto{
-  background:var(--auto-bg); color:var(--auto-fg);
-  font-weight:700; text-align:center; padding:0 6px; font-variant-numeric:tabular-nums;
-}
-td.cell-auto.blank{color:var(--ink-3); font-weight:400}
-tr.hide{display:none}
-tr.coinempty td{background:transparent; color:var(--ink-3); text-align:center; height:auto; font-size:12px; padding:0}
-.empty-state{padding:30px 16px 26px; text-align:center}
-.empty-shards{display:flex; justify-content:center; gap:12px; margin-bottom:14px}
-.empty-shards i{
-  display:block; width:24px; height:20px;
-  background:linear-gradient(135deg, rgba(156,196,255,.30), rgba(76,141,255,.05));
-  border:1px solid rgba(156,196,255,.14);
-  clip-path:polygon(0 0,100% 20%,80% 100%,9% 76%);
-  animation:emptyFloat 3.4s var(--ease) infinite;
-}
-.empty-shards i:nth-child(2){animation-delay:.45s; width:30px; height:25px}
-.empty-shards i:nth-child(3){animation-delay:.9s}
-@keyframes emptyFloat{
-  0%,100%{transform:translateY(0) rotate(0deg); opacity:.55}
-  50%{transform:translateY(-7px) rotate(9deg); opacity:.95}
-}
-.empty-title{font-size:13px; font-weight:700; color:var(--ink-1); letter-spacing:.04em}
-.empty-sub{font-size:11.5px; color:var(--ink-3); margin-top:5px}
-tr.sep td{background:var(--bg-3); padding:3px; border-bottom:1px solid var(--line)}
-
-tfoot td{
-  background:var(--label-bg); color:var(--label-fg); font-weight:800;
-  padding:0 6px; height:28px; text-align:center; font-variant-numeric:tabular-nums;
-  border-top:1px solid var(--line-2); border-bottom:none;
-}
-tfoot td.grand{background:var(--sum-bg); color:var(--sum-fg); font-size:14px}
-tfoot td.empty{background:transparent}
-
-table.detail{min-width:1500px}
-table.detail thead th{background:var(--bg-3); font-size:11px}
-table.detail td{padding:0 5px; height:28px; text-align:center; font-variant-numeric:tabular-nums; white-space:nowrap}
-table.detail tbody tr:nth-child(even) td{background:rgba(255,255,255,.02)}
-table.detail .loss{color:var(--warn)}
-table.detail .raw{color:var(--ink-3)}
-
-/* ============ 伤害构成 ============ */
+/* ---------- 伤害构成 ---------- */
 .composehead{
-  margin:16px 0 8px; font-size:12px; font-weight:700; color:var(--ink-1);
-  display:flex; align-items:center; gap:10px;
+  margin:16px 0 10px; padding-top:12px; border-top:1px solid var(--line);
+  font-size:12px; font-weight:600; color:var(--ink-1);
+  display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;
 }
-.composehead .hint{font-size:11px; font-weight:400; color:var(--ink-3)}
 .compose{display:flex; flex-direction:column; gap:6px}
-.crow{display:grid; grid-template-columns:78px minmax(0,1fr) 104px; align-items:center; gap:10px}
-.crow .cl{font-size:11.5px; font-weight:700; color:var(--primary-2); text-align:right; white-space:nowrap}
-.crow .cbar{display:flex; height:22px; border-radius:6px; overflow:hidden; background:var(--bg-3); border:1px solid var(--line)}
-.crow .cbar span{
-  display:flex; align-items:center; justify-content:center; overflow:hidden;
-  height:100%; transition:width .4s var(--ease);
+.crow{display:grid; grid-template-columns:70px minmax(0,1fr) 150px; gap:10px; align-items:center}
+.crow.zero{opacity:.55}
+.crow .cl{font-size:11.5px; color:var(--ink-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.crow .cbar{
+  display:flex; height:18px; border-radius:var(--r-xs); overflow:hidden;
+  background:var(--bg-3); border:1px solid var(--line);
 }
-.crow .cbar em{
-  font-style:normal; font-size:10px; font-weight:800;
-  color:rgba(255,255,255,.95); text-shadow:0 1px 2px rgba(0,0,0,.45);
-  white-space:nowrap; pointer-events:none;
+.crow .cbar span{height:100%; display:flex; align-items:center; justify-content:flex-end; padding:0 3px; overflow:hidden}
+.crow .cbar em{font-style:normal; font-size:10px; font-weight:700; color:#0a0d12; font-variant-numeric:tabular-nums}
+.seg-base{background:var(--primary)}
+.seg-extra{background:#4f9d78}
+.seg-fixed{background:#c89a4e}
+.clegend{
+  display:flex; gap:16px; flex-wrap:wrap; margin-top:10px;
+  font-size:11.5px; color:var(--ink-3);
 }
+.clegend span{display:inline-flex; align-items:center; gap:6px}
+.clegend i{width:9px; height:9px; border-radius:2px; display:inline-block}
 .crow .cv{
-  display:flex; flex-direction:column; align-items:flex-end; justify-content:center;
-  line-height:1.2; font-variant-numeric:tabular-nums; color:var(--sum-fg);
+  display:flex; align-items:baseline; gap:8px; justify-content:flex-end;
+  font-variant-numeric:tabular-nums; white-space:nowrap;
 }
-.crow .cv b{font-size:12.5px; font-weight:800}
-.crow .cv .pct{font-size:10.5px; font-weight:700; color:var(--ink-3)}
-.crow .cv .parts{font-size:9.5px; color:var(--ink-3); font-variant-numeric:tabular-nums; white-space:nowrap}
-.crow.zero .cbar{background:var(--bg-2)}
-.seg-base{background:linear-gradient(180deg, #5b9bd5, #3b7bb5)}
-.seg-extra{background:linear-gradient(180deg, #e8a33d, #c9821d)}
-.seg-fixed{background:linear-gradient(180deg, #4fae72, #2f8a52)}
-.clegend{display:flex; flex-wrap:wrap; gap:16px; font-size:11px; color:var(--ink-3); margin-top:10px; align-items:center}
-.clegend i{display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:-2px; margin-right:5px}
+.crow .cv b{font-size:12.5px; color:var(--ink-0)}
+.crow .cv .pct{font-size:11px; color:var(--ink-3); min-width:38px; text-align:right}
+.crow .cv .parts{display:none}
 
-.legend{display:flex; flex-wrap:wrap; gap:16px; font-size:11px; color:var(--ink-3); margin-top:12px; align-items:center}
-.legend i{display:inline-block; width:13px; height:13px; border-radius:3px; vertical-align:-2px; margin-right:5px; border:1px solid var(--line-2)}
-
-/* ============ 参数扫描 ============ */
-.sweepbar{display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-bottom:12px}
-.sweepbar label{font-size:12px; font-weight:600; color:var(--ink-2); display:flex; align-items:center; gap:6px}
-.sweepbar input[type=number]{width:96px}
-.sweepbar select{width:auto; min-width:170px}
-.sweepnote{font-size:11.5px; color:var(--ink-2); margin-top:10px; line-height:1.8}
-.sweepnote b{color:var(--primary-2)}
-.sweepchart{background:var(--bg-1); border:1px solid var(--line); border-radius:var(--r-m); padding:10px}
+/* ---------- 参数扫描 ---------- */
+.sweepbar{display:flex; align-items:flex-end; gap:10px; flex-wrap:wrap}
+.sweepbar label{
+  display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--ink-3);
+  white-space:nowrap;
+}
+.sweepbar label select,.sweepbar label input{width:74px; min-width:0; height:28px; text-align:center}
+.sweepbar label:first-child select{min-width:176px}
+.sweepbar button{height:28px}
+details.sweepresult,details.fsub, .doc details{
+  margin-top:12px; border:1px solid var(--line); border-radius:var(--r-m); background:var(--bg-2); overflow:hidden;
+}
+details summary{
+  list-style:none; cursor:pointer; user-select:none;
+  padding:9px 12px; font-size:12px; font-weight:600; color:var(--ink-1);
+  display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;
+  background:var(--bg-3);
+  transition:color .15s var(--ease);
+}
+details summary::-webkit-details-marker{display:none}
+details summary:hover{color:var(--primary-3)}
+details summary::before{content:"▸"; display:inline-block; color:var(--ink-3); transition:transform .18s var(--ease); font-size:10px}
+details[open]>summary::before{transform:rotate(90deg)}
+.sweepchart{background:var(--bg-1); border-top:1px solid var(--line); padding:12px}
 .sweepchart svg{display:block; width:100%; height:auto}
-.sweeptbl{max-height:270px; overflow:auto; margin-top:12px; border-radius:var(--r-s)}
-.sweeptbl table{font-size:12px}
-.sweepmark{color:var(--sum-fg); font-weight:800}
-.sweepflat{color:var(--warn); font-weight:700}
-tr.sweepmax td{background:rgba(245,165,36,.08)}
-
-details.sweepresult{border:1px solid var(--line); border-radius:var(--r-m); background:var(--glass); overflow:hidden}
-details.sweepresult summary{
-  cursor:pointer; padding:9px 12px; font-weight:700; font-size:12px; color:var(--ink-1);
-  background:var(--glass); user-select:none; list-style:none;
-  display:flex; align-items:center; gap:8px;
+.sweeptbl{max-height:280px; overflow:auto; border-top:1px solid var(--line)}
+.sweeptbl table{font-size:11.5px}
+.sweeptbl th{padding:6px 8px; position:sticky; top:0; z-index:2; background:var(--bg-3)}
+.sweeptbl td{height:26px; padding:0 8px; text-align:right; font-variant-numeric:tabular-nums}
+.sweeptbl td:first-child,.sweeptbl th:first-child{text-align:left}
+.sweepmax td{background:rgba(47,125,225,.09)}
+.sweepmark{color:var(--primary-3); font-weight:700}
+.sweepflat{color:var(--warn); font-weight:600}
+.sweepnote{padding:10px 14px; font-size:12px; color:var(--ink-2); border-top:1px solid var(--line); line-height:1.75}
+.sweepnote b{color:var(--primary-3)}
+.fbody{padding:12px 14px; border-top:1px solid var(--line)}
+.fcoin{
+  border-left:2px solid var(--primary); background:var(--bg-1);
+  border-radius:0 var(--r-xs) var(--r-xs) 0; padding:8px 12px; margin-bottom:8px;
 }
-details.sweepresult summary::-webkit-details-marker{display:none}
-details.sweepresult summary::before{content:"▸"; display:inline-block; transition:transform .2s var(--ease)}
-details.sweepresult[open] summary::before{transform:rotate(90deg)}
-details.sweepresult summary:hover{background:var(--glass-2)}
-details.sweepresult summary .hint{font-size:11px; font-weight:400; color:var(--ink-3)}
-details.sweepresult>div{padding:10px 12px}
-details.sweepresult>.sweeptbl{padding:0 12px 12px}
-
-/* ============ 公式代入 ============ */
-details.fsub{border:1px solid var(--line); border-radius:var(--r-m); background:var(--glass); overflow:hidden; margin-top:12px}
-details.fsub summary{
-  cursor:pointer; padding:9px 12px; font-weight:700; font-size:12px; color:var(--ink-1);
-  background:var(--glass); user-select:none; list-style:none;
-  display:flex; align-items:center; gap:8px;
-}
-details.fsub summary::-webkit-details-marker{display:none}
-details.fsub summary::before{content:"▸"; display:inline-block; transition:transform .2s var(--ease)}
-details.fsub[open] summary::before{transform:rotate(90deg)}
-details.fsub summary:hover{background:var(--glass-2)}
-details.fsub .fbody{padding:10px 12px 14px}
-.fcoin{border-left:2px solid var(--primary); background:var(--bg-1); border-radius:0 var(--r-s) var(--r-s) 0; padding:9px 12px; margin-bottom:9px}
-.fcoin .ft{font-weight:800; font-size:12px; color:var(--primary-2); margin-bottom:5px}
+.fcoin:last-child{margin-bottom:0}
+.fcoin>div:first-child{font-size:12px; color:var(--ink-0); font-weight:600; margin-bottom:2px}
 .fcoin .fl{font-family:var(--mono); font-size:11.5px; color:var(--ink-1); word-break:break-all; line-height:1.8}
-.fcoin .fl b{color:var(--sum-fg); font-weight:700}
+.fcoin .fl b{color:var(--primary-3); font-weight:700}
 
-/* ============ 说明文档 ============ */
-.doc{font-size:12.5px; line-height:1.9; color:var(--ink-1)}
+/* ---------- 使用说明 ---------- */
+.doc{font-size:12.5px; line-height:1.85; color:var(--ink-1)}
 .doc h3{
-  font-size:12.5px; color:var(--primary-2); margin:20px 0 8px; padding-bottom:6px;
-  border-bottom:1px solid var(--line); font-weight:700; letter-spacing:.02em;
+  margin:22px 0 8px; padding-left:10px; font-size:13px; font-weight:600; color:var(--ink-0);
+  border-left:3px solid var(--primary); line-height:1.4;
 }
 .doc h3:first-child{margin-top:0}
-.doc ol,.doc ul{margin:6px 0 10px; padding-left:22px}
-.doc li{margin-bottom:4px}
 .doc p{margin:8px 0}
-.doc code{
-  background:var(--bg-3); border:1px solid var(--line); border-radius:4px;
-  padding:1px 5px; font-size:11.5px; color:var(--sum-fg); font-family:var(--mono);
+.doc ol,.doc ul{margin:8px 0; padding-left:22px}
+.doc li{margin:4px 0}
+.doc b{color:var(--ink-0); font-weight:600}
+.doc code{color:var(--primary-3)}
+.doc .note,.doc .tip{
+  margin:12px 0; padding:10px 14px; border-radius:var(--r-s);
+  background:var(--bg-2); border:1px solid var(--line); border-left:3px solid var(--sum-line);
+  color:var(--ink-1);
 }
+.doc .tip{border-left-color:var(--ok)}
+.doc .tip b{color:var(--auto-fg)}
+.doc .note b{color:var(--primary-3)}
 .doc .frm{
-  background:var(--bg-1); border:1px solid var(--line); border-radius:var(--r-s);
-  padding:10px 13px; margin:8px 0; font-family:var(--mono); font-size:11.5px;
-  color:var(--ink-1); white-space:pre-wrap; word-break:break-all; line-height:1.75;
+  font-family:var(--mono); font-size:11.5px; line-height:1.9; white-space:pre-wrap;
+  background:var(--bg-0); border:1px solid var(--line); border-radius:var(--r-s);
+  padding:11px 14px; margin:10px 0; color:var(--ink-1);
 }
-.doc .frm b{color:var(--sum-fg); font-weight:700}
-.doc .note{background:rgba(245,165,36,.07); border-left:2px solid var(--warn); padding:9px 13px; border-radius:0 var(--r-s) var(--r-s) 0; margin:10px 0; color:var(--ink-1)}
-.doc .swatch{
-  display:inline-block; padding:1px 9px; border-radius:4px;
-  font-weight:700; font-size:11.5px; border:1px solid transparent;
+.doc .frm b{color:var(--primary-3); font-weight:700}
+.doc .dbody{padding:10px 14px 14px; border-top:1px solid var(--line); color:var(--ink-1); font-size:12.5px; line-height:1.85}
+.doc details{margin:10px 0}
+.doc table.term{
+  width:100%; border-collapse:collapse; margin:12px 0; font-size:12px;
+  border:1px solid var(--line); border-radius:var(--r-m); overflow:hidden;
+}
+.doc table.term th{
+  background:var(--bg-3); color:var(--ink-2); font-weight:600; font-size:11.5px;
+  padding:8px 10px; text-align:left; height:auto; border-right:1px solid var(--line);
+}
+.doc table.term td{
+  padding:8px 10px; height:auto; text-align:left; vertical-align:top;
+  color:var(--ink-1); line-height:1.75; border-right:1px solid var(--line);
+}
+.doc table.term tr:last-child td{border-bottom:none}
+.doc table.term td:first-child{color:var(--ink-0); font-weight:600; white-space:nowrap}
+.swatch{
+  display:inline-block; padding:0 7px; border-radius:var(--r-xs); font-size:11px;
+  font-weight:600; line-height:18px; border:1px solid var(--line);
 }
 .doc .sw-in{background:var(--in-bg); color:var(--in-fg); border-color:var(--in-line)}
 .doc .sw-auto{background:var(--auto-bg); color:var(--auto-fg); border-color:var(--auto-line)}
 .doc .sw-sum{background:var(--sum-bg); color:var(--sum-fg); border-color:var(--sum-line)}
-.doc .tip{background:rgba(34,197,94,.07); border-left:2px solid var(--ok); padding:9px 13px; border-radius:0 var(--r-s) var(--r-s) 0; margin:10px 0; color:var(--ink-1)}
-.doc .tip b{color:var(--auto-fg)}
-.doc table.term{border-collapse:separate; border-spacing:0; width:100%; margin:10px 0; font-size:12px; border:1px solid var(--line); border-radius:var(--r-s); overflow:hidden}
-.doc table.term th{background:var(--bg-3); color:var(--ink-1); border-bottom:1px solid var(--line-2); padding:7px 10px; text-align:center; font-weight:700; position:static}
-.doc table.term td{border-bottom:1px solid var(--line); border-right:1px solid var(--line); padding:7px 10px; text-align:center; height:auto; vertical-align:middle}
-.doc table.term tr:last-child td{border-bottom:none}
-.doc table.term td:last-child{border-right:none; text-align:left}
-.doc table.term td:first-child{font-weight:700; color:var(--ink-0); white-space:nowrap}
-.doc details{border:1px solid var(--line); border-radius:var(--r-m); margin:10px 0; background:var(--glass); overflow:hidden}
-.doc details[open]{background:var(--bg-1)}
-.doc summary{
-  cursor:pointer; padding:9px 12px; font-weight:700; color:var(--ink-1);
-  font-size:12px; background:var(--glass); user-select:none; list-style:none;
-  display:flex; align-items:center; gap:8px;
+.kbd{
+  display:inline-block; font-family:var(--mono); font-size:11px;
+  background:var(--bg-3); border:1px solid var(--line-2); border-bottom-width:2px;
+  border-radius:var(--r-xs); padding:0 6px; color:var(--ink-0); line-height:17px;
 }
-.doc summary::-webkit-details-marker{display:none}
-.doc summary::before{content:"▸"; display:inline-block; transition:transform .2s var(--ease); color:var(--ink-3)}
-.doc details[open] summary::before{transform:rotate(90deg)}
-.doc summary:hover{background:var(--glass-2)}
-.doc details .dbody{padding:6px 14px 14px}
 
-/* ============ 存档抽屉 ============ */
-#drawerMask{position:fixed; top:var(--hd-h, 0px); left:0; right:0; bottom:0; background:rgba(5,8,12,.55); backdrop-filter:blur(3px); z-index:90; opacity:0; pointer-events:none; transition:opacity .24s var(--ease)}
+/* ---------- 存档抽屉 ---------- */
+#drawerMask{
+  position:fixed; top:0; left:0; right:0; bottom:0; z-index:90;
+  background:rgba(4,7,11,.62);
+  opacity:0; pointer-events:none; transition:opacity .22s var(--ease);
+}
 #drawerMask.on{opacity:1; pointer-events:auto}
 #archDrawer{
-  position:fixed; top:var(--hd-h, 0px); right:0; bottom:0; width:min(600px,94vw); z-index:95;
-  background:linear-gradient(180deg, var(--bg-2), var(--bg-1));
-  border-left:1px solid var(--line-2);
-  box-shadow:-24px 0 60px -20px rgba(0,0,0,.8);
+  position:fixed; top:0; right:0; bottom:0; z-index:100;
+  width:min(640px,calc(100vw * var(--zinv)));
   display:flex; flex-direction:column;
-  transform:translateX(103%);
-  transition:transform .32s var(--ease), visibility 0s linear .32s;
-  visibility:hidden;
+  background:var(--bg-1); border-left:1px solid var(--line-2);
+  transform:translateX(101%); visibility:hidden;
+  transition:transform .26s var(--ease), visibility 0s linear .26s;
+  box-shadow:-24px 0 40px -32px rgba(0,0,0,.9);
 }
-#archDrawer.on{transform:none; visibility:visible; transition:transform .32s var(--ease), visibility 0s}
-#archDrawer .dhead{
-  display:flex; align-items:center; gap:10px; padding:14px 18px;
-  background:linear-gradient(90deg, rgba(76,141,255,.12), transparent);
-  border-bottom:1px solid var(--line); color:var(--ink-0);
-  font-weight:800; font-size:14px; letter-spacing:.04em;
+#archDrawer.on{transform:none; visibility:visible; transition:transform .26s var(--ease), visibility 0s}
+.dhead{
+  display:flex; align-items:center; gap:12px;
+  padding:14px 16px; border-bottom:1px solid var(--line);
+  font-size:14px; font-weight:600; color:var(--ink-0);
 }
-#archDrawer .dcount{font-size:11.5px; font-weight:400; color:var(--ink-3)}
-#archDrawer .dclose{
-  margin-left:auto; background:transparent; border:none; color:var(--ink-2);
-  font-size:22px; line-height:1; cursor:pointer; padding:0 4px; height:auto;
-  transition:color .18s var(--ease), transform .18s var(--ease);
+.dhead .dcount{font-size:11.5px; font-weight:400; color:var(--ink-3)}
+.dhead .dclose{
+  margin-left:auto; width:28px; height:28px; padding:0;
+  font-size:16px; line-height:1; color:var(--ink-2);
+  background:transparent; border:1px solid transparent; border-radius:var(--r-s);
 }
-#archDrawer .dclose:hover{color:var(--ink-0); transform:rotate(90deg); background:transparent; box-shadow:none}
-#archDrawer .dbar{
-  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
-  padding:12px 18px; border-bottom:1px solid var(--line); background:var(--glass);
+.dhead .dclose:hover{background:var(--bg-3); color:var(--ink-0); border-color:var(--line-2)}
+.dbar{display:flex; gap:8px; padding:12px 16px; border-bottom:1px solid var(--line); flex-wrap:wrap}
+.dbar .searchwrap{flex:1 1 220px; display:flex; min-width:0}
+.dbar input[type=text]{
+  width:100%; height:30px; padding:0 10px; font-size:12px;
+  background:var(--bg-2); border:1px solid var(--line-2); border-radius:var(--r-s);
+  color:var(--ink-0); outline:none; transition:border-color .15s var(--ease);
 }
-.dbar .searchwrap{position:relative; flex:1 1 180px; min-width:140px}
-.dbar .searchwrap input{width:100%; padding-left:30px; box-sizing:border-box}
-.dbar .searchwrap::before{
-  content:""; position:absolute; left:10px; top:50%; transform:translateY(-50%);
-  width:13px; height:13px; pointer-events:none; opacity:.55;
-  background:no-repeat center/13px url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2388a4c8' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='M15.5 15.5 21 21'/%3E%3C/svg%3E");
-}
-#archDrawer .dbar input[type=text]{flex:1; text-align:left}
-#archDrawer .dbar select{width:auto; min-width:130px}
-#archDrawer .dselbar{
-  display:flex; align-items:center; gap:12px; padding:8px 18px;
-  border-bottom:1px solid var(--line); background:var(--glass);
+.dbar input[type=text]:focus{border-color:var(--primary); box-shadow:0 0 0 2px var(--ring)}
+.dbar select{height:30px; font-size:12px}
+.dselbar{
+  display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  padding:9px 16px; border-bottom:1px solid var(--line); background:var(--bg-0);
   font-size:11.5px; color:var(--ink-3);
 }
-#archDrawer .dselbar label{display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:700; color:var(--ink-1); margin:0}
-#archDrawer .dselbar input[type=checkbox]{width:14px; height:14px; margin:0; cursor:pointer; accent-color:var(--primary)}
-#archDrawer .dselbar button{margin-left:auto}
-#archDrawer .dscroll{
-  flex:1; overflow-y:auto; overflow-x:hidden; padding:14px 18px;
-  position:relative; z-index:1;
-  overscroll-behavior:contain;      /* 滚到底时不把滚动传给页面 */
-  -webkit-overflow-scrolling:touch;
-  scrollbar-width:thin;
-  scrollbar-color:rgba(255,255,255,.18) transparent;
-}
-#archDrawer .dscroll::-webkit-scrollbar{width:8px}
-#archDrawer .dscroll::-webkit-scrollbar-track{background:transparent}
-#archDrawer .dscroll::-webkit-scrollbar-thumb{
-  background:rgba(255,255,255,.16); border-radius:4px;
-}
-#archDrawer .dscroll::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.28)}
-#archDrawer .dshards{position:absolute; inset:0; pointer-events:none; overflow:hidden; z-index:0; opacity:.5}
-#archDrawer .dshards i{
-  position:absolute; display:block;
-  width:var(--w); height:var(--h);
-  background:linear-gradient(135deg, rgba(156,196,255,.4), rgba(76,141,255,.05));
-  clip-path:polygon(0 0,100% 20%,80% 100%,9% 76%);
-  opacity:0;
-  animation:cShard var(--dur) ease-in-out var(--dly) infinite;
-}
-#archDrawer .dhead,#archDrawer .dbar,#archDrawer .dselbar,#archDrawer .dfoot{position:relative; z-index:1}
-#archDrawer .dfoot{
-  display:flex; align-items:center; gap:8px; padding:10px 18px;
-  border-top:1px solid var(--line); background:var(--glass);
-  font-size:11px; color:var(--ink-3);
-}
-
-.archlist{display:flex; flex-direction:column; gap:10px}
+.dselbar label{display:inline-flex; align-items:center; gap:6px; cursor:pointer; color:var(--ink-2)}
+.dselbar input[type=checkbox]{width:14px; height:14px; margin:0}
+.dscroll{flex:1 1 auto; overflow:auto; padding:12px 16px 18px}
+.archlist{display:flex; flex-direction:column; gap:8px}
 .arch{
-  border:1px solid var(--line); border-radius:var(--r-m); padding:12px 14px;
-  display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center;
-  background:var(--glass);
-  transition:border-color .2s var(--ease), background .2s var(--ease), transform .2s var(--ease);
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  padding:11px 12px; border:1px solid var(--line); border-radius:var(--r-m);
+  background:var(--bg-2);
+  transition:border-color .15s var(--ease), background .15s var(--ease);
 }
-.arch:hover{border-color:var(--primary); background:var(--glass-2); transform:translateY(-1px)}
-.arch .pick{display:flex; align-items:center; flex:0 0 auto; padding-right:2px; cursor:pointer}
-.arch .pick input[type=checkbox]{width:16px; height:16px; margin:0; cursor:pointer; accent-color:var(--primary)}
-.arch .nm{font-weight:800; font-size:13.5px; color:var(--ink-0)}
-.arch .meta{font-size:11.5px; color:var(--ink-3); margin-top:2px}
-.arch .nums{display:flex; gap:12px; flex-wrap:wrap; font-size:11.5px; color:var(--ink-2)}
-.arch .nums b{font-size:14px; color:var(--sum-fg); font-variant-numeric:tabular-nums; font-weight:800}
+.arch:hover{border-color:var(--line-3); background:var(--bg-3)}
+.arch .pick{display:flex; align-items:center}
+.arch .pick input[type=checkbox]{width:15px; height:15px; margin:0}
+.arch .grip{cursor:grab; color:var(--ink-3); font-size:12px; letter-spacing:-2px; user-select:none; line-height:1}
+.arch .nm{font-size:12.5px; font-weight:600; color:var(--ink-0); word-break:break-all}
+.arch .meta{font-size:11px; color:var(--ink-3); margin-top:2px}
+.arch .nums{display:flex; gap:14px; font-size:11.5px; color:var(--ink-3); flex-wrap:wrap}
+.arch .nums b{
+  font-size:13px; font-weight:700; color:var(--primary-3);
+  font-variant-numeric:tabular-nums; margin-left:2px;
+}
 .arch .nums b.loop-num{color:var(--auto-fg)}
-.dim{color:var(--ink-3)}
-.arch .acts{margin-left:auto; display:flex; gap:6px; flex-wrap:wrap}
-.arch .note{
-  flex-basis:100%; font-size:11.5px; color:var(--ink-2);
-  background:var(--bg-1); border-left:2px solid var(--primary);
-  padding:6px 10px; border-radius:0 var(--r-s) var(--r-s) 0;
+.arch .acts{display:flex; gap:4px; flex-wrap:wrap}
+.arch.dragging{opacity:.45; border-color:var(--primary)}
+.arch.drop-before{border-top:2px solid var(--primary)}
+.archgroup{margin-bottom:10px}
+.ghead{
+  display:flex; align-items:center; gap:8px; padding:7px 10px;
+  border:1px solid var(--line); border-radius:var(--r-s); background:var(--bg-3);
+  font-size:12px; cursor:pointer; user-select:none;
+  transition:border-color .15s var(--ease);
 }
-/* 仅用于档案列表的空状态提示；加 div 限定，避免影响表格里的空单元格 */
-div.empty{color:var(--ink-3); font-size:12px; padding:36px 16px; text-align:center; background:var(--glass); border-radius:var(--r-m); border:1px dashed var(--line-2)}
+.ghead:hover{border-color:var(--line-3)}
+.ghead.dragging{opacity:.45}
+.archgroup.drop-target>.ghead{border-color:var(--primary); background:var(--hover)}
+.ggrip{cursor:grab; color:var(--ink-3); letter-spacing:-2px; font-size:12px; line-height:1}
+.gcaret{font-size:9px; color:var(--ink-3); transition:transform .18s var(--ease)}
+.ghead.closed .gcaret{transform:rotate(-90deg)}
+.gname{font-weight:600; color:var(--ink-1)}
+.gcount{
+  font-size:10.5px; color:var(--ink-3); background:var(--bg-1);
+  border:1px solid var(--line); border-radius:9px; padding:0 7px; line-height:16px;
+}
+.gacts{margin-left:auto; display:flex; gap:4px}
+.gbody{padding:8px 0 0}
+.gitems{display:flex; flex-direction:column; gap:8px; padding-bottom:4px}
+div.empty{
+  padding:36px 16px; text-align:center; font-size:12px; color:var(--ink-3);
+  background:var(--bg-2); border:1px dashed var(--line-2); border-radius:var(--r-m);
+}
+.dfoot{
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  padding:12px 16px; border-top:1px solid var(--line);
+  font-size:11px; color:var(--ink-3); background:var(--bg-0);
+}
 
-/* ============ 弹窗 ============ */
+/* ---------- 弹窗 ---------- */
 #overlay{
-  position:fixed; inset:0; background:rgba(5,8,12,.6); backdrop-filter:blur(4px);
-  z-index:100; display:none; align-items:center; justify-content:center; padding:20px;
+  position:fixed; inset:0; z-index:150;
+  display:flex; align-items:center; justify-content:center; padding:20px;
+  background:rgba(4,7,11,.66);
+  opacity:0; pointer-events:none; transition:opacity .18s var(--ease);
 }
-#overlay.on{display:flex}
+#overlay.on{opacity:1; pointer-events:auto}
 .modal{
-  background:linear-gradient(180deg, var(--bg-2), var(--bg-1));
-  border:1px solid var(--line-2); border-radius:var(--r-l);
-  width:100%; max-width:480px;
-  box-shadow:0 24px 70px -24px rgba(0,0,0,.9);
-  overflow:hidden;
-  animation:modalIn .28s var(--ease-spring) both;
+  width:min(560px,100%); max-height:calc(100vh * var(--zinv) - 48px); overflow:auto;
+  background:var(--bg-1); border:1px solid var(--line-2); border-radius:var(--r-l);
+  box-shadow:0 24px 48px -24px rgba(0,0,0,.8);
+  transform:translateY(6px); transition:transform .18s var(--ease);
 }
-@keyframes modalIn{from{opacity:0; transform:scale(.96) translateY(8px)} to{opacity:1; transform:none}}
+#overlay.on .modal{transform:none}
 .modal h3{
-  margin:0; padding:14px 18px; font-size:14px; font-weight:800; letter-spacing:.03em;
-  background:linear-gradient(90deg, rgba(76,141,255,.14), transparent);
-  border-bottom:1px solid var(--line); color:var(--ink-0);
+  margin:0; padding:14px 18px; font-size:13.5px; font-weight:600; color:var(--ink-0);
+  border-bottom:1px solid var(--line);
 }
-.modal .mb{padding:18px}
-.modal .mb label{display:block; font-size:11.5px; font-weight:700; margin-bottom:6px; color:var(--ink-2)}
-.modal .mb input,.modal .mb textarea{
-  width:100%; padding:9px 11px; border:1px solid var(--line-2); border-radius:var(--r-s);
-  font-family:inherit; font-size:13px; margin-bottom:14px;
-  background:var(--bg-3); color:var(--ink-0);
+.modal .mb{padding:16px 18px; display:flex; flex-direction:column; gap:8px}
+.modal .mb label{font-size:11.5px; color:var(--ink-2); margin-top:4px}
+.modal .mb input[type=text],.modal .mb textarea{
+  width:100%; padding:8px 10px; font-size:12.5px; font-family:var(--font);
+  border:1px solid var(--line-2); border-radius:var(--r-s);
+  background:var(--bg-2); color:var(--ink-0); outline:none; resize:vertical;
+  transition:border-color .15s var(--ease);
 }
-.modal .mb input:focus,.modal .mb textarea:focus{outline:none; border-color:var(--primary); box-shadow:0 0 0 3px var(--glow)}
-.modal .mb textarea{resize:vertical; min-height:70px}
-.modal .mb label.chk{display:flex; align-items:center; gap:8px; font-size:12px; color:var(--ink-2); font-weight:400; margin-bottom:0; cursor:pointer}
-.modal .mb label.chk input[type=checkbox]{width:auto; margin:0; flex:0 0 auto; accent-color:var(--primary)}
-.modal .mf{padding:0 18px 18px; display:flex; gap:10px; justify-content:flex-end}
+.modal .mb textarea{min-height:84px; line-height:1.6}
+.modal .mb input:focus,.modal .mb textarea:focus{border-color:var(--primary); box-shadow:0 0 0 2px var(--ring)}
+.modal .mb label.chk{display:flex; align-items:center; gap:8px; font-size:12px; color:var(--ink-1); cursor:pointer}
+.modal .mb label.chk input[type=checkbox]{width:auto; margin:0; flex:0 0 auto}
+.modal .mb table{font-size:12px}
+.modal .mb th,.modal .mb td{border-right:none}
+.modal .mf{
+  display:flex; justify-content:flex-end; gap:8px;
+  padding:12px 18px; border-top:1px solid var(--line);
+}
+.modal .mf button{height:30px; padding:0 16px}
 
-/* ============ 提示条 ============ */
-/* ===== 右侧锚点导航 ===== */
+/* ---------- 提示条 ---------- */
+#toast{
+  position:fixed; left:50%; bottom:26px; transform:translate(-50%,10px);
+  z-index:200; opacity:0; pointer-events:none;
+  padding:9px 16px; border-radius:var(--r-m); font-size:12px;
+  background:var(--bg-3); color:var(--ink-0); border:1px solid var(--line-2);
+  box-shadow:0 12px 28px -18px rgba(0,0,0,.9);
+  transition:opacity .2s var(--ease), transform .2s var(--ease);
+  max-width:min(560px,calc(100vw * var(--zinv) - 32px));
+}
+#toast.on{opacity:1; transform:translate(-50%,0)}
+#toast.ok{border-color:rgba(92,184,127,.45); color:var(--auto-fg)}
+#toast.err{border-color:rgba(232,106,106,.45); color:var(--danger)}
+
+/* ---------- 右侧板块导航 ---------- */
 #anchorNav{
   position:fixed; right:16px; top:50%; transform:translateY(-50%);
-  z-index:40; display:flex; flex-direction:column; gap:11px;
-  padding:10px 8px; border-radius:999px;
-  background:rgba(20,26,36,.45); border:1px solid var(--line);
-  backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+  z-index:55; display:flex; flex-direction:column; gap:7px;
+  padding:9px; border:1px solid var(--line); border-radius:var(--r-m);
+  background:var(--bg-1);
 }
 #anchorNav a{
   display:block; width:7px; height:7px; border-radius:50%;
-  background:rgba(255,255,255,.20);
-  transition:transform .22s var(--ease), background .22s var(--ease), box-shadow .22s var(--ease);
+  background:var(--line-3); transition:background .15s var(--ease), transform .15s var(--ease);
 }
-#anchorNav a:hover{background:var(--primary-2); transform:scale(1.5)}
-#anchorNav a.on{
-  background:var(--primary-2); transform:scale(1.35);
-  box-shadow:0 0 10px var(--glow);
+#anchorNav a:hover{background:var(--primary-2); transform:scale(1.25)}
+#anchorNav a.on{background:var(--primary); transform:scale(1.25)}
+/* 靠右窄屏时钉在左侧，避免压住卡片内容 */
+/* =========================================================
+   微交互层：只做 transform / opacity，不触发布局，不加滤镜
+   ========================================================= */
+/* 顶栏环境光：极慢横向漂移，裁在自己的容器里，不影响「更多」弹层 */
+.hd-aurora{position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:0}
+.hd-aurora::before{
+  content:""; position:absolute; top:-70%; bottom:-70%; left:-20%; width:140%;
+  background:
+    radial-gradient(42% 58% at 20% 50%, var(--aurora-1), transparent 72%),
+    radial-gradient(38% 52% at 80% 44%, var(--aurora-2), transparent 74%);
+  animation:auroraDrift 26s ease-in-out infinite alternate;
+  will-change:transform;
 }
-@media (max-width:1100px){#anchorNav{display:none}}
-
-#toast{
-  position:fixed; left:50%; bottom:32px; transform:translateX(-50%) translateY(16px);
-  background:var(--bg-3); color:var(--ink-0);
-  border:1px solid var(--line-2); border-radius:999px;
-  padding:10px 22px; font-size:12.5px; font-weight:600;
-  opacity:0; pointer-events:none; transition:.26s var(--ease); z-index:200;
-  box-shadow:0 12px 36px -14px rgba(0,0,0,.9);
-  max-width:80vw; text-align:center;
-}
-#toast.on{opacity:1; transform:translateX(-50%) translateY(0)}
-#toast.err{background:rgba(255,107,107,.92); color:#fff; border-color:transparent}
-#toast.ok{background:rgba(34,197,94,.92); color:#fff; border-color:transparent}
-
-#storeWarn{
-  display:none; margin:0 20px 12px;
-  background:rgba(245,165,36,.1); border:1px solid rgba(245,165,36,.3);
-  color:var(--sum-fg); padding:10px 14px; border-radius:var(--r-m); font-size:12px;
-}
-#storeWarn.on{display:block}
-
-#archSearch{height:28px; box-sizing:border-box; text-align:left}
-.kbd{
-  background:var(--bg-3); border:1px solid var(--line-2); border-bottom-width:2px;
-  border-radius:4px; padding:0 6px; font-size:11px; font-family:var(--mono); color:var(--ink-1);
+@keyframes auroraDrift{
+  from{transform:translate3d(-3%,0,0) scale(1)}
+  to{transform:translate3d(3%,0,0) scale(1.06)}
 }
 
-/* ============ 开场动画 ============ */
+/* 主结果数字变化时轻轻落一下（只给「拼点点数」「总伤害」） */
+.bigres.bump .v{animation:vBump .38s var(--ease)}
+@keyframes vBump{
+  0%{transform:translateY(0) scale(1); opacity:1}
+  28%{transform:translateY(-3px) scale(1.03); opacity:.7}
+  100%{transform:translateY(0) scale(1); opacity:1}
+}
+
+/* 分区标题用小横线做视觉锚点，替代纯文字堆叠 */
+fieldset>legend{position:relative}
+
+/* 减少动态偏好：以上装饰动效全部静止 */
+@media (prefers-reduced-motion:reduce){
+  .hd-aurora::before{animation:none}
+  button.primary::after{display:none}
+  button:not(:disabled):hover{transform:none; box-shadow:none}
+  button:not(:disabled):hover i[class*="fa-"]{transform:none}
+  .bigres.bump .v{animation:none}
+  .pager .lm-tx.pulse{animation:none}
+  .card::after{transition:none}
+}
+
+@media (max-width:1725px){
+  #anchorNav{right:auto; left:8px; padding:7px; gap:6px}
+}
+@media (max-width:1426px){#anchorNav{display:none}}
+
+/* ---------- 开场动画（一次性，播完直接从 DOM 移除，不残留合成层） ---------- */
 #boot{
-  position:fixed; inset:0; z-index:999;
-  display:none; align-items:center; justify-content:center; cursor:pointer;
-  background:radial-gradient(circle at 50% 45%, #141a24 0%, #070a0e 70%);
+  position:fixed; inset:0; z-index:300;
+  display:flex; align-items:center; justify-content:center;
+  background:radial-gradient(circle at 50% 45%, #131a24 0%, #080a0e 72%);
   overflow:hidden;
 }
-#boot.on{display:flex}
-/* 浅色模式的开场：亮底 + 深色字，避免白屏后突然切黑 */
 html[data-theme="light"] #boot{
-  background:radial-gradient(circle at 50% 45%, #f4f8ff 0%, #dbe5f3 72%);
+  background:radial-gradient(circle at 50% 45%, #f7fafe 0%, #dde7f4 72%);
 }
-html[data-theme="light"] .boot-title span{
-  background:linear-gradient(135deg, #101a2b 0%, #2b5fa8 48%, #4c86d6 100%);
-  -webkit-background-clip:text; background-clip:text;
-  filter:drop-shadow(0 0 22px rgba(76,141,255,.22));
-}
-html[data-theme="light"] .boot-sub{color:#5878a4}
-html[data-theme="light"] .boot-line{
-  background:linear-gradient(90deg, transparent, #4c8dff, transparent);
+#boot.hide{opacity:0; transition:opacity .4s var(--ease); pointer-events:none}
+.boot-wrap{position:relative; display:flex; flex-direction:column; align-items:center; gap:13px}
+/* 45° 玻璃：从一点生长成形。只动 transform / opacity，不触发重排 */
+.boot-glass{
+  position:absolute; left:50%; top:50%;
+  width:min(300px,74vw); height:min(300px,74vw);
+  margin:calc(min(300px,74vw) / -2) 0 0 calc(min(300px,74vw) / -2);
+  border:1px solid rgba(156,196,255,.28); border-radius:2px;
+  background:linear-gradient(135deg, rgba(156,196,255,.075), rgba(76,141,255,.012));
+  box-shadow:0 0 60px rgba(76,141,255,.16), inset 0 0 40px rgba(156,196,255,.05);
+  opacity:0; transform:rotate(-12deg) scale(.2);
+  animation:glassForm .95s cubic-bezier(.22,.9,.28,1) .05s forwards;
+  will-change:transform, opacity; pointer-events:none;
 }
 html[data-theme="light"] .boot-glass{
-  border-color:rgba(76,141,255,.24);
-  background:linear-gradient(135deg, rgba(255,255,255,.62), rgba(214,232,255,.28));
-  box-shadow:0 0 70px rgba(76,141,255,.14), inset 0 0 44px rgba(255,255,255,.6);
+  border-color:rgba(76,141,255,.22);
+  background:linear-gradient(135deg, rgba(255,255,255,.62), rgba(214,232,255,.30));
+  box-shadow:0 0 60px rgba(76,141,255,.12), inset 0 0 40px rgba(255,255,255,.55);
 }
-html[data-theme="light"] .shard{
-  background:linear-gradient(135deg, rgba(76,141,255,.5), rgba(140,185,255,.15));
-  filter:drop-shadow(0 0 6px rgba(76,141,255,.3));
+@keyframes glassForm{
+  0%{opacity:0; transform:rotate(-12deg) scale(.2)}
+  42%{opacity:1}
+  100%{opacity:1; transform:rotate(45deg) scale(1)}
 }
-#boot.hide{animation:bootOut .7s var(--ease) forwards; pointer-events:none}
-@keyframes bootOut{
-  0%{opacity:1; transform:scale(1)}
-  100%{opacity:0; transform:scale(1.08)}
-}
-.boot-wrap{position:relative; z-index:2; text-align:center}
-.boot-title{
-  display:flex; gap:.14em; justify-content:center;
-  font-size:64px; font-weight:900; letter-spacing:.08em;
-  font-family:var(--font);
-}
-.boot-title span{
-  display:inline-block;
-  background:linear-gradient(135deg, #ffffff 0%, #9cc4ff 45%, #6f8dff 100%);
-  -webkit-background-clip:text; background-clip:text; color:transparent;
-  opacity:0;
-  animation:chFlick .9s var(--ease) forwards;
-  filter:drop-shadow(0 0 24px rgba(76,141,255,.55));
-}
-.boot-title span:nth-child(1){animation-delay:.10s}
-.boot-title span:nth-child(2){animation-delay:.24s}
-.boot-title span:nth-child(3){animation-delay:.38s}
-.boot-title span:nth-child(4){animation-delay:.52s}
-@keyframes chFlick{
-  0%{opacity:0; transform:translateY(14px) scale(.9); filter:blur(6px) drop-shadow(0 0 0 transparent)}
-  35%{opacity:1; transform:translateY(0) scale(1.04); filter:blur(0) drop-shadow(0 0 30px rgba(76,141,255,.9))}
-  45%{opacity:.35}
-  55%{opacity:1}
-  70%{opacity:.6}
-  100%{opacity:1; transform:translateY(0) scale(1); filter:blur(0) drop-shadow(0 0 24px rgba(76,141,255,.5))}
-}
-.boot-sub{
-  margin-top:14px; font-size:12px; letter-spacing:.42em; color:#7fa6d8;
-  opacity:0; animation:bootSub .8s var(--ease) .95s forwards;
-}
-@keyframes bootSub{from{opacity:0; letter-spacing:.7em} to{opacity:1; letter-spacing:.42em}}
-.boot-line{
-  width:0; height:1px; margin:22px auto 0;
-  background:linear-gradient(90deg, transparent, #4c8dff, transparent);
-  animation:bootLine 1s var(--ease) 1.05s forwards;
-}
-@keyframes bootLine{to{width:280px}}
-
 /* 镜面碎片 */
-.shards{position:absolute; inset:0; z-index:1; pointer-events:none}
-.shard{
+#boot .shards{position:absolute; inset:0; pointer-events:none; overflow:hidden}
+#boot .shard{
   position:absolute; left:50%; top:50%;
   width:var(--w); height:var(--h);
-  background:linear-gradient(135deg, rgba(156,196,255,.85), rgba(76,141,255,.25));
-  clip-path:polygon(0 0, 100% 22%, 78% 100%, 12% 74%);
-  opacity:0;
-  animation:shardFly 1.15s cubic-bezier(.2,.7,.3,1) forwards;
-  animation-delay:var(--d);
-  filter:drop-shadow(0 0 8px rgba(76,141,255,.7));
+  background:linear-gradient(135deg, rgba(178,212,255,.92), rgba(76,141,255,.26));
+  clip-path:polygon(0 0,100% 22%,78% 100%,12% 74%);
+  opacity:0; transform:translate(-50%,-50%) scale(.2);
+  animation:shardFly 1.05s cubic-bezier(.2,.7,.3,1) var(--d) forwards;
+  will-change:transform, opacity;
 }
 @keyframes shardFly{
   0%{opacity:0; transform:translate(-50%,-50%) rotate(0deg) scale(.2)}
-  12%{opacity:1}
-  100%{
-    opacity:0;
-    transform:translate(calc(-50% + var(--x)), calc(-50% + var(--y))) rotate(var(--r)) scale(var(--s));
+  14%{opacity:1}
+  100%{opacity:0; transform:translate(calc(-50% + var(--x)), calc(-50% + var(--y))) rotate(var(--r)) scale(var(--s))}
+}
+/* 逐字浮现 */
+.boot-title{position:relative; z-index:2; display:flex; align-items:center; gap:10px}
+/* 四个字作为一整块，字与字之间不留额外间距 */
+.boot-ch{display:inline-flex; align-items:baseline; gap:0, var(--gap)}
+.boot-ico{
+  width:34px; height:34px; flex:0 0 auto; border-radius:9px; display:block;
+  box-shadow:0 0 0 1px rgba(255,255,255,.14), 0 6px 22px -8px rgba(76,141,255,.9);
+}
+.boot-ch span{
+  font-size:30px; font-weight:800; letter-spacing:.02em;
+  background:linear-gradient(135deg,#ffffff 0%,#9cc4ff 52%,#6f8dff 100%);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  opacity:0; transform:translateY(10px) scale(.94);
+  animation:chIn .62s cubic-bezier(.22,.9,.28,1) forwards;
+}
+html[data-theme="light"] .boot-ch span{
+  background:linear-gradient(135deg,#101a2b 0%,#2b5fa8 55%,#4c86d6 100%);
+  -webkit-background-clip:text; background-clip:text;
+}
+.boot-ch span:nth-child(1){animation-delay:.10s}
+.boot-ch span:nth-child(2){animation-delay:.20s}
+.boot-ch span:nth-child(3){animation-delay:.30s}
+.boot-ch span:nth-child(4){animation-delay:.40s}
+@keyframes chIn{
+  0%{opacity:0; transform:translateY(10px) scale(.94)}
+  62%{opacity:1; transform:translateY(0) scale(1.035)}
+  100%{opacity:1; transform:none}
+}
+.boot-sub{
+  position:relative; z-index:2;
+  font-size:10.5px; letter-spacing:.32em; color:var(--ink-3);
+  opacity:0; animation:bootIn .5s var(--ease) .52s forwards;
+}
+html[data-theme="light"] .boot-sub{color:#5878a4}
+.boot-line{
+  position:relative; z-index:2; width:0; height:1px;
+  background:linear-gradient(90deg,transparent,var(--primary-3),transparent);
+  animation:bootLine .9s var(--ease) .48s forwards;
+}
+html[data-theme="light"] .boot-line{background:linear-gradient(90deg,transparent,#4c8dff,transparent)}
+@keyframes bootIn{from{opacity:0; transform:translateY(6px)}to{opacity:1; transform:none}}
+@keyframes bootLine{to{width:200px}}
+
+/* ---------- 滚动条 ---------- */
+*{scrollbar-width:thin; scrollbar-color:var(--line-3) transparent}
+::-webkit-scrollbar{width:10px; height:10px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--line-3); border-radius:5px; border:2px solid var(--bg-0)}
+::-webkit-scrollbar-thumb:hover{background:var(--ink-3)}
+
+/* ---------- 响应式 ---------- */
+@media (max-width:1357px){
+  .workspace{grid-template-columns:minmax(0,1fr)}
+  /* 单列布局（窄视口 / 浏览器放大）时，表头与内容收成同一个宽度：
+     顶栏不再比卡片宽出一截，整页左右边齐平、真正居中 */
+  .hd-in, #storeWarn, main{max-width:824px}
+  .ws-left>.card, main>.card, main>.workspace>.card{
+    max-width:780px; margin-left:auto; margin-right:auto;
   }
 }
-
-/* 开场：45° 玻璃从一点生长 */
-.boot-wrap{position:relative}
-.boot-glass{
-  position:absolute; left:50%; top:50%;
-  width:min(340px, 78vw); height:min(340px, 78vw);
-  margin-left:calc(min(340px, 78vw) / -2);
-  margin-top:calc(min(340px, 78vw) / -2);
-  border:1px solid rgba(156,196,255,.30);
-  background:linear-gradient(135deg, rgba(156,196,255,.08), rgba(76,141,255,.015));
-  box-shadow:0 0 70px rgba(76,141,255,.20), inset 0 0 50px rgba(156,196,255,.06);
-  transform:rotate(-10deg) scale(0);
-  opacity:0;
-  animation:glassForm 1.1s var(--ease) .04s forwards;
-  pointer-events:none;
+@media (max-width:1035px){
+  main{padding:14px 12px 32px}
+  .hd-in{
+    grid-template-columns:minmax(0,1fr);
+    grid-template-areas:"brand" "skill" "tools";
+    padding:0 12px; gap:10px;
+  }
+  .hd-skill{justify-content:stretch}
+  .hd-in{gap:7px 12px}
+  header{padding:12px 0 10px}
+  .crow{grid-template-columns:56px minmax(0,1fr) 110px; gap:8px}
+  .bigres .v{font-size:24px}
 }
-@keyframes glassForm{
-  0%{transform:rotate(-10deg) scale(0); opacity:0}
-  50%{opacity:1}
-  100%{transform:rotate(45deg) scale(1); opacity:1}
-}
-.boot-title{position:relative; z-index:3}
-.boot-sub,.boot-line{position:relative; z-index:3}
-
-/* 表头碎片 */
-.hd-shards{position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:0}
-.hd-shards i{
-  position:absolute; display:block;
-  width:var(--w); height:var(--h);
-  background:linear-gradient(135deg, rgba(156,196,255,.55), rgba(76,141,255,.08));
-  clip-path:polygon(0 0,100% 18%,80% 100%,8% 76%);
-  opacity:0;
-  animation:hdShard var(--dur) ease-in-out var(--dly) infinite;
-}
-@keyframes hdShard{
-  0%,100%{opacity:0; transform:translateY(2px) rotate(0deg) scale(.9)}
-  18%{opacity:.85}
-  50%{opacity:.45; transform:translateY(-7px) rotate(var(--r)) scale(1)}
-  82%{opacity:.8}
-}
-header h1,header .sub,.hd-top,.toolbar{position:relative; z-index:1}
-
-/* 背景漂浮碎片（视差） */
-.bg-layer{position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden}
-
-/* 丁达尔光柱：几束斜向的柔光，缓慢摆动 */
-.tyndall{
-  position:absolute; inset:-12% -22%;
-  background:
-    linear-gradient(101deg, transparent 34%, rgba(120,180,255,.055) 41%, transparent 47%),
-    linear-gradient(95deg,  transparent 52%, rgba(150,205,255,.042) 59%, transparent 65%),
-    linear-gradient(108deg, transparent 66%, rgba(120,180,255,.038) 73%, transparent 79%),
-    linear-gradient(112deg, transparent 80%, rgba(160,210,255,.03) 86%, transparent 91%);
-  filter:blur(16px);
-  animation:tyndallSway 22s ease-in-out infinite alternate;
-}
-@keyframes tyndallSway{
-  from{transform:translateX(-2.5%) scaleY(1)}
-  to{transform:translateX(2.5%) scaleY(1.06)}
+@media (max-width:736px){
+  .tglabel{padding-right:0}
+  .kv{grid-template-columns:minmax(0,1fr)}
+  .hd-skill .tgroup{flex-wrap:wrap; gap:4px}
+  .hd-in{gap:6px 10px}
+  header{padding:9px 0 7px}
+  .toolbar>.tgroup{padding:0 7px}
+  .toolbar .tglabel{display:none}
+  header input.charname{flex:1 1 140px; min-width:0}
+  header input.skillname{flex:1 1 110px; min-width:0}
+  .sweepbar label{flex:1 1 auto}
+  .sweepbar label select,.sweepbar label input{flex:1 1 auto; min-width:0}
 }
 
-/* 上浮气泡 */
-.bubbles,.sparks,.bg-shard-host{position:absolute; inset:0}
-.bubble{
-  position:absolute; bottom:-60px; display:block;
-  width:var(--w); height:var(--w); border-radius:50%;
-  background:radial-gradient(circle at 32% 28%, rgba(205,232,255,.55), rgba(120,180,255,.10) 62%, transparent 72%);
-  border:1px solid rgba(160,210,255,.14);
-  opacity:0;
-  animation:bubbleRise var(--dur) linear var(--dly) infinite;
+/* 减少动态效果 */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important}
+  html{scroll-behavior:auto}
 }
-@keyframes bubbleRise{
-  0%{opacity:0; transform:translateY(0) scale(.55)}
-  12%{opacity:.75}
-  78%{opacity:.45}
-  100%{opacity:0; transform:translateY(-112vh) scale(1.15)}
-}
-
-/* 闪光点 */
-.spark{
-  position:absolute; display:block;
-  width:var(--s); height:var(--s); border-radius:50%;
-  background:radial-gradient(circle, rgba(255,255,255,.95), rgba(160,210,255,.4) 45%, transparent 72%);
-  opacity:0;
-  animation:sparkTwinkle var(--dur) ease-in-out var(--dly) infinite;
-}
-@keyframes sparkTwinkle{
-  0%,100%{opacity:0; transform:scale(.4)}
-  50%{opacity:.85; transform:scale(1)}
-}
-.bg-shard-wrap{position:absolute; will-change:transform}
-.bg-shard{
-  display:block; width:var(--w); height:var(--h);
-  background:linear-gradient(135deg, rgba(156,196,255,.17), rgba(76,141,255,.03));
-  border:1px solid rgba(156,196,255,.15);
-  clip-path:polygon(0 0,100% 22%,78% 100%,12% 74%);
-  animation:bgFloat var(--fd) ease-in-out infinite alternate;
-}
-@keyframes bgFloat{
-  from{transform:translateY(0) rotate(0deg)}
-  to{transform:translateY(-22px) rotate(7deg)}
-}
-@media (max-width:760px){.bg-layer{display:none}}
-main{position:relative; z-index:1}
-
-/* 工具栏里的开场动画开关 */
-.tool-switch{display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--ink-3); cursor:pointer; user-select:none}
-.tool-switch input{width:14px; height:14px; margin:0; accent-color:var(--primary); cursor:pointer}
-
-/* 降低动效偏好 */
-@media (prefers-reduced-motion: reduce){
-  *{animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important}
-}
-
-
-/* ===== 循环模式胶囊 ===== */
-.loopmode{
-  display:flex; align-items:center; gap:6px; flex:0 0 auto;
-  height:30px; padding:0 10px; border-radius:999px;
-  background:linear-gradient(135deg, rgba(76,141,255,.16), rgba(139,92,246,.14));
-  border:1px solid rgba(76,141,255,.35);
-  box-shadow:0 0 0 1px rgba(76,141,255,.06), 0 4px 16px -8px rgba(76,141,255,.5);
-  transition:border-color .2s var(--ease), box-shadow .2s var(--ease);
-}
-.loopmode.active{
-  border-color:var(--primary-2);
-  box-shadow:0 0 0 2px rgba(76,141,255,.14), 0 6px 22px -10px rgba(76,141,255,.7);
-}
-.loopmode .lm-on{display:flex; align-items:center; gap:5px; cursor:pointer; font-size:12px; font-weight:700; color:var(--ink-1); white-space:nowrap}
-.loopmode .lm-on input{width:13px; height:13px; margin:0; accent-color:var(--primary)}
-.loopmode select{
-  width:auto; height:22px; padding:0 20px 0 8px; font-size:11.5px;
-  border-radius:999px; background-color:rgba(255,255,255,.07);
-  border-color:rgba(255,255,255,.14);
-}
-.loopmode .lm-tx{
-  min-width:34px; text-align:center; font-size:13px; font-weight:900;
-  color:var(--primary-2); letter-spacing:.04em; font-variant-numeric:tabular-nums;
-}
-.loopmode .lm-next{
-  height:22px; padding:0 11px; font-size:11.5px; font-weight:800;
-  border-radius:999px; border:none; color:#fff;
-  background:linear-gradient(135deg, var(--primary-2), var(--primary-3));
-  box-shadow:0 4px 14px -6px var(--glow);
-}
-.loopmode .lm-next:hover:not(:disabled){transform:translateY(-1px); filter:brightness(1.08)}
-.loopmode .lm-next:disabled{opacity:.35; box-shadow:none}
-@media (max-width:900px){.loopmode .lm-on span{display:none}}
-
-/* ===== 存档分组 ===== */
-.archgroup{margin-bottom:12px}
-.archgroup .ghead{
-  display:flex; align-items:center; gap:8px; cursor:pointer;
-  padding:6px 8px; border-radius:8px; user-select:none;
-  background:rgba(255,255,255,.03); border:1px solid var(--line);
-}
-.archgroup .ghead:hover{background:rgba(255,255,255,.06)}
-.archgroup .gcaret{font-size:10px; color:var(--ink-3); transition:transform .2s var(--ease)}
-.archgroup .ghead.closed .gcaret{transform:rotate(-90deg)}
-.archgroup .gname{font-size:12px; font-weight:800; color:var(--ink-1)}
-.archgroup .gcount{
-  font-size:10.5px; color:var(--ink-3); background:rgba(255,255,255,.07);
-  padding:0 7px; border-radius:999px;
-}
-.archgroup .gacts{margin-left:auto; display:flex; gap:6px}
-.archgroup .gbody{display:flex; flex-direction:column; gap:8px; padding:8px 0 0}
-
-.arch .grip{
-  cursor:grab; color:var(--ink-3); font-size:13px; letter-spacing:-2px;
-  padding:0 2px; user-select:none; opacity:.5;
-}
-.arch .grip:active{cursor:grabbing}
-.arch.dragging{opacity:.4; border-color:var(--primary)}
-.arch.drop-before{border-top:2px solid var(--primary-2)}
-
-/* 循环折线：叠在柱状图上，看清一轮内的走向 */
-.loopbars{position:relative}
-.loopline{
-  position:absolute; inset:0; width:100%; height:100%;
-  pointer-events:none; overflow:visible;
-}
-.loopline polyline{
-  fill:none; stroke:var(--primary-2); stroke-width:1.6;
-  stroke-linejoin:round; stroke-linecap:round; opacity:.85;
-  vector-effect:non-scaling-stroke;
-}
-/* 拼点留空 = 不参与平均，用虚线 + 破折号提示 */
-.clashrow input:placeholder-shown{border-style:dashed; opacity:.85}
-.clashrow input::placeholder{color:var(--ink-3); opacity:.9}
-
-/* 循环存档：左侧一道青色标记，和技能存档区分 */
-.arch.arch-loop{
-  border-left:3px solid rgba(56,189,248,.65);
-  background:linear-gradient(90deg, rgba(56,189,248,.06), transparent 40%);
-}
-.arch.arch-loop .nm{color:#7dd3fc}
-.loopmode .lm-prev,.loopmode .lm-save{
-  height:22px; padding:0 9px; font-size:11.5px; font-weight:700;
-  border-radius:999px; border:1px solid rgba(255,255,255,.16);
-  background:rgba(255,255,255,.06); color:var(--ink-1);
-}
-.loopmode .lm-prev:hover:not(:disabled),.loopmode .lm-save:hover:not(:disabled){
-  background:rgba(255,255,255,.12); border-color:var(--primary-2);
-}
-.loopmode .lm-prev:disabled,.loopmode .lm-save:disabled{opacity:.3}
-
-.archgroup .ggrip{
-  cursor:grab; color:var(--ink-3); font-size:12px; letter-spacing:-2px;
-  opacity:.45; user-select:none;
-}
-.archgroup .ggrip:active{cursor:grabbing}
-.archgroup .ghead.dragging{opacity:.45}
-.archgroup.drop-target .ghead{
-  border-color:var(--primary-2);
-  box-shadow:0 0 0 2px rgba(76,141,255,.18);
-}
-#archSort{
-  height:28px; border-radius:8px; font-size:11.5px;
-  background-color:rgba(255,255,255,.06); border:1px solid var(--line-2);
-  color:var(--ink-1); padding:0 8px;
-}
-
-/* 多级文件夹：子级用左侧竖线串起来 */
-.archgroup .gbody{
-  display:flex; flex-direction:column; gap:8px;
-  padding:6px 0 0 0;
-  border-left:1px dashed rgba(255,255,255,.10);
-  margin-left:9px;
-}
-.archgroup .gitems{display:flex; flex-direction:column; gap:8px; padding:6px 0 2px}
 </style>
 </head>
 <body>
 
+<!-- 装饰层保留 DOM（脚本仍会往里写节点），CSS 已将其整体隐藏，不参与绘制与合成 -->
 <div class="bg-layer" id="bgLayer" aria-hidden="true">
   <div class="tyndall"></div>
   <div class="bubbles" id="bgBubbles"></div>
@@ -1280,7 +1246,7 @@ main{position:relative; z-index:1}
   <div class="shards" id="bootShards"></div>
   <div class="boot-wrap">
     <div class="boot-glass"></div>
-    <div class="boot-title"><span>镜</span><span>息</span><span>演</span><span>算</span></div>
+    <div class="boot-title"><span class="boot-ch"><span>镜</span><span>息</span><span>演</span><span>算</span></span></div>
     <div class="boot-sub">MIRROR · BREATH · CALCULUS</div>
     <div class="boot-line"></div>
   </div>
@@ -1288,48 +1254,96 @@ main{position:relative; z-index:1}
 
 <header>
   <div class="hd-shards" id="hdShards" aria-hidden="true"></div>
-  <h1>镜息演算 <span style="font-size:13px;font-weight:400;opacity:.85">· 边狱巴士技能伤害计算器</span></h1>
-  <div class="sub"><span id="verTag" style="font-weight:700">v3.2</span> · 单文件离线版 · 所有计算在本机完成，数据不会上传</div>
-  <div class="toolbar">
-    <input type="text" class="charname" id="charName" data-bind="character" placeholder="人格（如：堂吉诃德 脑叶公司E.G.O:: 以爱与憎之名）" title="填写人格全名，例如：堂吉诃德 脑叶公司E.G.O:: 以爱与憎之名">
-    <select id="skillPick" class="skillpick" title="选择技能类型，或选「自定义」自行输入">
-      <option value="">自定义</option>
-      <option value="一技能">一技能</option>
-      <option value="二技能">二技能</option>
-      <option value="三技能">三技能</option>
-      <option value="反击">反击</option>
-      <option value="强化一">强化一</option>
-      <option value="强化二">强化二</option>
-      <option value="强化三">强化三</option>
-    </select>
-    <input type="text" class="skillname" id="skillName" data-bind="skillName" placeholder="技能名称（如：阿卡纳律动！！/小阿卡纳光破斩！！！）" title="填写技能名，例如：阿卡纳律动！！/小阿卡纳光破斩！！！">
-    <div class="loopmode" id="loopModeBar">
-      <label class="lm-on" title="开启后可用「下一T」逐回合记录">
-        <input type="checkbox" id="loopModeOn"><span>循环模式</span>
-      </label>
-      <select id="loopTarget" title="记录到哪一组循环">
-        <option value="loop3">极限</option>
-        <option value="loop1">第一</option>
-        <option value="loop2">第二</option>
-      </select>
-      <span class="lm-tx" id="loopTx">T1</span>
-      <button class="lm-prev" id="btnPrevT" disabled title="回到上一回合">←</button>
-      <button class="lm-next" id="btnNextT" disabled>下一T →</button>
-      <button class="lm-save" id="btnLoopSave" disabled title="把当前 18 个循环数值存为循环存档（覆盖同文件夹的旧循环存档）">存循环</button>
+  <div class="hd-aurora" aria-hidden="true"></div>
+  <div class="hd-in">
+
+    <!-- 品牌区 -->
+    <div class="hd-brand">
+      <h1><img class="brand-ico" src="icon.png" alt="" width="22" height="22">镜息演算<span class="hd-sub">· 边狱巴士技能伤害计算器</span>
+      <div class="sub"><b id="verTag">v3.3</b></div></h1>
     </div>
-    <button class="ghost tbgap" id="btnUndo" title="撤销上一步改动（Ctrl+Z）">↶ 撤销</button>
-    <button class="ghost" id="btnRedo" title="重做（Ctrl+Y 或 Ctrl+Shift+Z）">↷ 重做</button>
-    <button class="ghost tbgap" id="btnQuickSave" title="以「技能名+时间」自动命名快速存档">⚡ 快速存档</button>
-    <button class="ghost primary" id="btnSave" title="把当前全部输入与结果存为档案（Ctrl+S）">💾 存档</button>
-    <button class="ghost" id="btnOpenArch" title="打开存档管理（读档 / 对比 / 批量删除）">📁 档案</button>
-    <button class="ghost tbgap" id="btnCsv" title="把当前逐硬币结果导出为 CSV，可用表格软件打开">⇩ CSV</button>
-    <button class="ghost" id="btnExport">⇩ 备份</button>
-    <button class="ghost" id="btnImport">⇧ 导入</button>
-    <button class="ghost tbgap" id="btnResetCoins" title="把技能参数、硬币参数、全局设置恢复为初始值（人格名、技能名与循环数据保留）">⟲ 重置参数</button>
-    <button class="ghost" id="btnResetAll" title="清空全部输入，回到初始空白状态">⟲ 全部复原</button>
-    <button class="ghost tbgap" id="btnTheme" title="切换深色 / 浅色模式">☀️ 浅色</button>
-    <label class="tool-switch" title="下次打开时是否播放开场动画"><input type="checkbox" id="bootToggle"> 开场动画</label>
-    <input type="file" id="fileImport" accept=".json,application/json" style="display:none">
+
+    <!-- 技能标识：人格 / 技能类型 / 技能名 -->
+    <div class="hd-skill">
+      <div class="tgroup grow">
+        <span class="tglabel">技能</span>
+        <input type="text" class="charname" id="charName" data-bind="character" placeholder="人格（如：堂吉诃德 脑叶公司E.G.O:: 以爱与憎之名）" title="填写人格全名，例如：堂吉诃德 脑叶公司E.G.O:: 以爱与憎之名">
+        <select id="skillPick" class="skillpick" title="选择技能类型，或选「自定义」自行输入">
+          <option value="">自定义</option>
+          <option value="一技能">一技能</option>
+          <option value="二技能">二技能</option>
+          <option value="三技能">三技能</option>
+          <option value="反击">反击</option>
+          <option value="强化一">强化一</option>
+          <option value="强化二">强化二</option>
+          <option value="强化三">强化三</option>
+        </select>
+        <input type="text" class="skillname" id="skillName" data-bind="skillName" placeholder="技能名称（如：阿卡纳律动！！）" title="填写技能名，例如：阿卡纳律动！！/小阿卡纳光破斩！！！">
+      </div>
+    </div>
+
+    <!-- 操作区：常用操作平铺一行，低频操作收进「更多」 -->
+    <div class="toolbar">
+
+      <div class="tgroup">
+        <span class="tglabel">循环</span>
+        <div class="loopmode" id="loopModeBar">
+          <label class="lm-on" title="开启后可用后面的回合分页器逐回合记录">
+            <input type="checkbox" id="loopModeOn"><i class="fa-solid fa-repeat" aria-hidden="true"></i><span>循环模式</span>
+          </label>
+          <select id="loopTarget" title="记录到哪一组循环">
+            <option value="loop3">极限</option>
+            <option value="loop1">第一</option>
+            <option value="loop2">第二</option>
+          </select>
+          <span class="pager" role="group" aria-label="回合分页">
+            <button class="lm-prev" id="btnPrevT" disabled title="回到上一回合" aria-label="上一回合"><i class="fa-solid fa-chevron-left" aria-hidden="true"></i></button>
+            <span class="lm-tx" id="loopTx">T1</span>
+            <button class="lm-next" id="btnNextT" disabled title="记录本回合并进入下一回合" aria-label="下一回合"><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>
+          </span>
+          <button class="lm-save" id="btnLoopSave" disabled title="把当前 18 个循环数值存为循环存档（覆盖同文件夹的旧循环存档）"><i class="fa-solid fa-bookmark" aria-hidden="true"></i>存循环</button>
+        </div>
+      </div>
+
+      <div class="tgroup">
+        <span class="tglabel">编辑</span>
+        <button class="ghost" id="btnUndo" title="撤销上一步改动（Ctrl+Z）"><i class="fa-solid fa-rotate-left" aria-hidden="true"></i>撤销</button>
+        <button class="ghost" id="btnRedo" title="重做（Ctrl+Y 或 Ctrl+Shift+Z）"><i class="fa-solid fa-rotate-right" aria-hidden="true"></i>重做</button>
+      </div>
+
+      <div class="tgroup">
+        <span class="tglabel">存档</span>
+        <button class="ghost primary" id="btnSave" title="把当前全部输入与结果存为档案（Ctrl+S）"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>存档</button>
+        <button class="ghost" id="btnQuickSave" title="以「技能名+时间」自动命名快速存档"><i class="fa-solid fa-bolt" aria-hidden="true"></i>快速存档</button>
+        <button class="ghost" id="btnOpenArch" title="打开存档管理（读档 / 对比 / 批量删除）"><i class="fa-solid fa-folder-open" aria-hidden="true"></i>档案</button>
+      </div>
+
+      <!-- 低频操作：导入导出 / 重置 / 外观 -->
+      <details class="tmore">
+        <summary title="导入导出、重置、外观等低频操作"><i class="fa-solid fa-ellipsis" aria-hidden="true"></i>更多</summary>
+        <div class="tmore-pop">
+          <div class="tgroup">
+            <span class="tglabel">导入导出</span>
+            <button class="ghost" id="btnCsv" title="把当前逐硬币结果导出为 CSV，可用表格软件打开"><i class="fa-solid fa-file-csv" aria-hidden="true"></i>CSV</button>
+            <button class="ghost" id="btnExport" title="导出整包 JSON 备份"><i class="fa-solid fa-download" aria-hidden="true"></i>备份</button>
+            <button class="ghost" id="btnImport" title="从 JSON 备份恢复"><i class="fa-solid fa-upload" aria-hidden="true"></i>导入</button>
+          </div>
+          <div class="tgroup">
+            <span class="tglabel">重置</span>
+            <button class="ghost" id="btnResetCoins" title="把技能参数、硬币参数、全局设置恢复为初始值（人格名、技能名与循环数据保留）"><i class="fa-solid fa-eraser" aria-hidden="true"></i>重置参数</button>
+            <button class="ghost" id="btnResetAll" title="清空全部输入，回到初始空白状态"><i class="fa-solid fa-broom" aria-hidden="true"></i>全部复原</button>
+          </div>
+          <div class="tgroup">
+            <span class="tglabel">外观</span>
+            <button class="ghost" id="btnTheme" title="切换深色 / 浅色模式"><i class="fa-solid fa-sun" aria-hidden="true"></i>浅色</button>
+            <label class="tool-switch" title="下次打开时是否播放开场动画"><input type="checkbox" id="bootToggle"> 开场动画</label>
+          </div>
+        </div>
+      </details>
+
+      <input type="file" id="fileImport" accept=".json,application/json" style="display:none">
+    </div>
+
   </div>
 </header>
 
@@ -1338,9 +1352,11 @@ main{position:relative; z-index:1}
 <main>
 
   <div class="workspace">
-    <!-- 技能参数 -->
+    <div class="ws-left">
+    <!-- ② 输入区 -->
     <div class="card card-params">
-      <h2><span class="ttl">「技能参数」</span><span class="hint hint-2line">浅蓝=手动输入<br>浅绿=自动计算</span></h2>
+      <h2><i class="fa-solid fa-sliders ico" aria-hidden="true"></i><span class="ttl">「技能参数」</span></h2>
+      <!-- <span class="hint hint-2line">浅蓝=手动输入<br>浅绿=自动计算</span> -->
       <div class="body">
         <fieldset>
           <legend>基础参数</legend>
@@ -1350,122 +1366,74 @@ main{position:relative; z-index:1}
             <div class="item"><label>硬币威力</label><input type="number" class="man" data-bind="coinPower" step="any" value="0"></div>
             <div class="item"><label>攻击容量</label><input type="number" class="man" data-bind="capacity" step="any" value="0"></div>
             <div class="item"><label>攻击等级</label><input type="number" class="man" data-bind="atkLevel" step="any" value="0"></div>
-            <div class="item"><label class="wide">是否为不可拼点反击</label><select class="man" data-bind="counter"><option>否</option><option>是</option></select></div>
-            <div class="item" id="joinClashRow"><label class="wide">是否参与拼点</label><select class="man" data-bind="joinClash"><option>是</option><option>否</option></select></div>
+            <div class="item"><label data-two class="wide">是否为不可拼点反击</label><label class="switch" title="点击切换：否 / 是"><input type="checkbox" data-bind="counter" data-on="是" data-off="否"><span class="rail"><span class="knob"></span></span></label></div>
+            <div class="item" id="joinClashRow"><label data-two class="wide">是否参与拼点</label><label class="switch" title="点击切换：是 / 否"><input type="checkbox" data-bind="joinClash" data-on="是" data-off="否"><span class="rail"><span class="knob"></span></span></label></div>
           </div>
         </fieldset>
         <fieldset>
           <legend>威力参数</legend>
           <div class="kv">
-            <div class="item"><label class="wide">终础威力加成</label><input type="number" class="man" data-bind="baseBonus" step="any" value="0"></div>
-            <div class="item"><label class="wide">硬币威力加成</label><input type="number" class="man" data-bind="coinBonus" step="any" value="0"></div>
-            <div class="item"><label class="wide">拼点威力加成</label><input type="number" class="man" data-bind="clashBonus" step="any" value="0"></div>
+            <div class="item"><label data-two class="wide">终础威力加成</label><input type="number" class="man" data-bind="baseBonus" step="any" value="0"></div>
+            <div class="item"><label data-two class="wide">硬币威力加成</label><input type="number" class="man" data-bind="coinBonus" step="any" value="0"></div>
+            <div class="item"><label data-two class="wide">拼点威力加成</label><input type="number" class="man" data-bind="clashBonus" step="any" value="0"></div>
             <div class="item"><label>威力总值</label><div class="out" id="o-powerTotal">0</div></div>
           </div>
         </fieldset>
         <fieldset>
           <legend>攻等参数</legend>
           <div class="kv">
-            <div class="item"><label class="wide">攻击等级加成</label><input type="number" class="man" data-bind="atkLevelBonus" step="any" value="0"></div>
+            <div class="item"><label data-two class="wide">攻击等级加成</label><input type="number" class="man" data-bind="atkLevelBonus" step="any" value="0"></div>
             <div class="item"><label>敌方等级</label><input type="number" class="man" data-bind="enemyLevel" step="any" value="0"></div>
-            <div class="item"><label class="wide">攻/防等级差值</label><div class="out" id="o-levelDiff">0</div></div>
-            <div class="item"><label class="wide">最终基础威力</label><div class="out" id="o-finalBase">0</div></div>
-            <div class="item"><label class="wide">最终硬币威力</label><div class="out" id="o-finalCoin">0</div></div>
+            <div class="item"><label data-two class="wide">攻/防等级差值</label><div class="out" id="o-levelDiff">0</div></div>
+            <div class="item"><label data-two class="wide">最终基础威力</label><div class="out" id="o-finalBase">0</div></div>
+            <div class="item"><label data-two class="wide">最终硬币威力</label><div class="out" id="o-finalCoin">0</div></div>
           </div>
         </fieldset>
       </div>
     </div>
+
+      <!-- ③ 全局设置 -->
+      <div class="card card-global">
+        <h2><i class="fa-solid fa-gear ico" aria-hidden="true"></i>「全局设置」<span class="hint">对全部硬币生效</span></h2>
+        <div class="body">
+          <fieldset>
+            <legend>暴击与重投</legend>
+            <div class="kv">
+              <div class="item"><label>必定暴击</label><label class="switch" title="点击切换：否 / 是"><input type="checkbox" data-bind="crit" data-on="是" data-off="否"><span class="rail"><span class="knob"></span></span></label></div>
+              <div class="item"><label>是否重投</label><label class="switch" title="点击切换：否 / 是"><input type="checkbox" data-bind="reroll" data-on="是" data-off="否"><span class="rail"><span class="knob"></span></span></label></div>
+              <div class="item"><label>重投次数</label><input type="number" class="man" data-bind="rerollCount" min="0" max="9" step="1" value="0"></div>
+              <div class="item"><label data-two class="wide">重投是否参与拼点</label><label class="switch" title="点击切换：否 / 是"><input type="checkbox" data-bind="rerollClash" data-on="是" data-off="否"><span class="rail"><span class="knob"></span></span></label></div>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>技能乘区</legend>
+            <div class="kv">
+              <div class="item"><label data-two class="wide">技能第一乘区</label><input type="number" class="man" data-bind="z1" step="any" value="0"></div>
+              <div class="item"><label data-two class="wide">技能第二乘区</label><input type="number" class="man" data-bind="z2" step="any" value="0"></div>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>等级差修正（自动）</legend>
+            <div class="kv">
+              <div class="item"><label data-two class="wide">等级差修正值</label><div class="out" id="o-levelMod">0</div></div>
+              <div class="item"><label data-two class="wide">暴击部分取值</label><div class="out" id="o-critPart">0</div></div>
+            </div>
+            <div class="doc" style="margin-top:8px">
+              <div class="note" style="font-size:11.5px;line-height:1.75">
+                等级差修正 = 等级差 ÷ (|等级差| + 25)，并入单币第一乘区后四舍五入保留 2 位。分母取绝对值，结果恒落在 −1 到 1 之间。<br>
+                必定暴击=是 时暴击部分恒为 0.2；否则每枚硬币暴击部分 = MIN(呼吸法强度 × 5% × 0.2, 0.2)。
+              </div>
+            </div>
+          </fieldset>
+        </div>
+      </div>
+    </div><!-- /ws-left -->
 
     <div class="ws-right">
-    <!-- 全局设置 -->
-    <div class="card card-global">
-      <h2>「全局设置」<span class="hint">对全部硬币生效</span></h2>
-      <div class="body">
-        <fieldset>
-          <legend>暴击与重投</legend>
-          <div class="kv">
-            <div class="item"><label>必定暴击</label><select class="man" data-bind="crit"><option>否</option><option>是</option></select></div>
-            <div class="item"><label>是否重投</label><select class="man" data-bind="reroll"><option>否</option><option>是</option></select></div>
-            <div class="item"><label>重投次数</label><input type="number" class="man" data-bind="rerollCount" min="0" max="9" step="1" value="0"></div>
-            <div class="item"><label class="wide">重投是否参与拼点</label><select class="man" data-bind="rerollClash"><option>否</option><option>是</option></select></div>
-          </div>
-        </fieldset>
-        <fieldset>
-          <legend>技能乘区</legend>
-          <div class="kv">
-            <div class="item"><label class="wide">技能第一乘区</label><input type="number" class="man" data-bind="z1" step="any" value="0"></div>
-            <div class="item"><label class="wide">技能第二乘区</label><input type="number" class="man" data-bind="z2" step="any" value="0"></div>
-          </div>
-        </fieldset>
-        <fieldset>
-          <legend>等级差修正（自动）</legend>
-          <div class="kv">
-            <div class="item"><label class="wide">等级差修正值</label><div class="out" id="o-levelMod">0</div></div>
-            <div class="item"><label class="wide">暴击部分取值</label><div class="out" id="o-critPart">0</div></div>
-          </div>
-          <div style="font-size:11.5px;color:var(--muted);margin-top:6px">
-            等级差修正 = 等级差 ÷ (|等级差| + 25)，并入单币第一乘区后四舍五入保留 2 位。分母取绝对值，结果恒落在 −1 到 1 之间。<br>
-            必定暴击=是 时暴击部分恒为 0.2；否则每枚硬币暴击部分 = MIN(呼吸法强度 × 5% × 0.2, 0.2)。
-          </div>
-        </fieldset>
-      </div>
-    </div>
-  <!-- 硬币参数 -->
-  <div class="card card-coins">
-    <h2>「硬币参数 · 详细参数」<span class="hint">硬币1–9 + 重投1–9，未启用的行自动隐藏</span></h2>
-    <div class="body">
-      <div class="tblwrap">
-        <table id="coinTable">
-          <colgroup>
-            <col><col><col><col>
-            <col><col><col><col>
-            <col><col><col><col>
-          </colgroup>
-          <thead>
-            <tr>
-              <th>硬币编号</th>
-              <th>呼吸法强度<small>输入</small></th>
-              <th>单币第一乘区<small>自动</small></th>
-              <th>单币第二乘区<small>输入</small></th>
-              <th>单币硬币威力<small>输入</small></th>
-              <th>终币特殊威力<small>输入</small></th>
-              <th>不计算追伤伤害<small>自动</small></th>
-              <th>固定追伤<small>输入</small></th>
-              <th>是否追伤<small>输入</small></th>
-              <th>追伤系数<small>输入</small></th>
-              <th>追伤数值<small>自动</small></th>
-              <th>伤害数值<small>自动</small></th>
-            </tr>
-          </thead>
-          <tbody id="coinBody"></tbody>
-          <tfoot>
-            <tr>
-              <td>合计</td>
-              <td class="empty"></td><td class="empty"></td><td class="empty"></td>
-              <td class="empty"></td><td class="empty"></td>
-              <td id="f-sumJ">0</td><td id="f-sumK">0</td><td class="empty"></td><td class="empty"></td>
-              <td id="f-sumN">0</td><td class="grand" id="f-sumO">0</td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-      <div class="composehead">「伤害构成」<span class="hint">每枚硬币各占本技能总伤害的多少，条长即占比</span></div>
-      <div class="compose" id="composeChart"></div>
-      <div class="clegend">
-        <span><i class="seg-base"></i>基础伤害</span>
-        <span><i class="seg-extra"></i>追伤</span>
-        <span><i class="seg-fixed"></i>固定追伤（已乘攻击容量）</span>
-      </div>
-    </div>
-  </div>
-
-    </div>
-  </div>
-
-  <!-- 计算结果 -->
+      <!-- ④ 计算结果：右侧常驻，随输入实时更新 -->
+  <!-- ① 结算摘要：页面最重要的两个数，放在最上方 -->
   <div class="card card-result">
-    <h2>「计算结果」<span class="hint">随输入实时更新
-    </span></h2>
+    <h2><i class="fa-solid fa-chart-simple ico" aria-hidden="true"></i>「计算结果」<span class="hint">随输入实时更新</span></h2>
     <div class="body">
       <div class="resultbar">
         <div class="bigres alt">
@@ -1473,7 +1441,7 @@ main{position:relative; z-index:1}
           <div class="v" id="o-clash">0</div>
         </div>
         <div class="bigres">
-          <div class="t">总伤害（全部硬币+重投）</div>
+          <div class="t">总伤害</div>
           <div class="v" id="o-total">0</div>
         </div>
       </div>
@@ -1483,18 +1451,64 @@ main{position:relative; z-index:1}
         <div class="box"><div class="t">追伤数值 合计</div><div class="v" id="o-sumN">0</div></div>
         <div class="box"><div class="t">固定追伤 合计（原值）</div><div class="v" id="o-sumK">0</div></div>
       </div>
-      <div class="legend">
-        <span><i style="background:var(--in)"></i>手动输入</span>
-        <span><i style="background:var(--auto)"></i>自动计算</span>
-        <span><i style="background:var(--sum)"></i>汇总结果</span>
-        <span style="margin-left:auto">循环数据为手动录入区：把每一轮实测/预期伤害填入，右侧自动求和。</span>
-      </div>
     </div>
   </div>
 
-  <!-- 循环数据 -->
+    </div><!-- /ws-right -->
+
+    <!-- ⑤ 硬币参数 -->
+    <div class="card card-coins">
+        <h2><i class="fa-solid fa-coins ico" aria-hidden="true"></i>「硬币参数 · 详细参数」<span class="hint">硬币1–9 + 重投1–9，未启用的行自动隐藏</span></h2>
+        <div class="body">
+          <div class="tblwrap">
+            <table id="coinTable">
+              <colgroup>
+                <col><col><col><col>
+                <col><col><col><col>
+                <col><col><col><col>
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>硬币编号</th>
+                  <th>呼吸法强度<small>输入</small></th>
+                  <th>单币第一乘区<small>自动</small></th>
+                  <th>单币第二乘区<small>输入</small></th>
+                  <th>单币硬币威力<small>输入</small></th>
+                  <th>终币特殊威力<small>输入</small></th>
+                  <th>不计算追伤伤害<small>自动</small></th>
+                  <th>固定追伤<small>输入</small></th>
+                  <th>是否追伤<small>输入</small></th>
+                  <th>追伤系数<small>输入</small></th>
+                  <th>追伤数值<small>自动</small></th>
+                  <th>伤害数值<small>自动</small></th>
+                </tr>
+              </thead>
+              <tbody id="coinBody"></tbody>
+              <tfoot>
+                <tr>
+                  <td>合计</td>
+                  <td class="empty"></td><td class="empty"></td><td class="empty"></td>
+                  <td class="empty"></td><td class="empty"></td>
+                  <td id="f-sumJ">0</td><td id="f-sumK">0</td><td class="empty"></td><td class="empty"></td>
+                  <td id="f-sumN">0</td><td class="grand" id="f-sumO">0</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          <div class="composehead">「伤害构成」<span class="hint">每枚硬币各占本技能总伤害的多少，条长即占比</span></div>
+          <div class="compose" id="composeChart"></div>
+          <div class="clegend">
+            <span><i class="seg-base"></i>基础伤害</span>
+            <span><i class="seg-extra"></i>追伤</span>
+            <span><i class="seg-fixed"></i>固定追伤（已乘攻击容量）</span>
+          </div>
+        </div>
+      </div>
+  </div>
+
+  <!-- ⑥ 循环数据 -->
   <div class="card card-loops">
-    <h2>「循环数据」<span class="hint">手动录入 · 每回合的伤害与拼点</span></h2>
+    <h2><i class="fa-solid fa-arrows-rotate ico" aria-hidden="true"></i>「循环数据」<span class="hint">手动录入 · 每回合的伤害与拼点</span></h2>
     <div class="body">
       <div class="subres">
         <div class="box hl"><div class="t">第一循环 · 启动轮</div><div class="v" id="o-loop1">0</div></div>
@@ -1525,9 +1539,9 @@ main{position:relative; z-index:1}
     </div>
   </div>
 
-  <!-- 参数扫描 -->
+  <!-- ⑥ 参数扫描 -->
   <div class="card card-subtle">
-    <h2>「参数扫描」<span class="hint">让一个参数在区间内变化，看总伤害怎么走</span></h2>
+    <h2><i class="fa-solid fa-chart-line ico" aria-hidden="true"></i>「参数扫描」<span class="hint">让一个参数在区间内变化，看总伤害怎么走</span></h2>
     <div class="body">
       <div class="sweepbar">
         <label>扫描参数
@@ -1561,9 +1575,9 @@ main{position:relative; z-index:1}
     </div>
   </div>
 
-  <!-- 计算过程 -->
-  <div class="card">
-    <h2>「逐硬币计算过程」<span class="hint">定位取整误差用：看「取整前伤害」与「取整损失」两列</span></h2>
+  <!-- ⑦ 逐硬币计算过程 -->
+  <div class="card collapsed">
+    <h2><i class="fa-solid fa-list-check ico" aria-hidden="true"></i>「逐硬币计算过程」<span class="hint">定位取整误差用：看「取整前伤害」与「取整损失」两列</span></h2>
     <div class="body">
       <div class="tblwrap">
         <table class="detail">
@@ -1585,9 +1599,11 @@ main{position:relative; z-index:1}
         <summary>展开：把当前数字代进公式（逐硬币算式）</summary>
         <div class="fbody" id="formulaBody"></div>
       </details>
-      <div style="font-size:11.5px;color:var(--muted);margin-top:8px">
-        「取整损失」= 取整前伤害 − 向下取整后的值。若某枚硬币的结果看起来差了 1 点，通常就是这一列的浮点尾数造成的，对照「取整前伤害」即可判断。<br>
-        未启用的行不显示，也不参与任何累计（威力、追伤、固定追伤都不计入）。
+      <div class="doc" style="margin-top:8px">
+        <div class="note" style="font-size:11.5px;line-height:1.75">
+          「取整损失」= 取整前伤害 − 向下取整后的值。若某枚硬币的结果看起来差了 1 点，通常就是这一列的浮点尾数造成的，对照「取整前伤害」即可判断。<br>
+          未启用的行不显示，也不参与任何累计（威力、追伤、固定追伤都不计入）。
+        </div>
       </div>
     </div>
   </div>
@@ -1627,9 +1643,9 @@ main{position:relative; z-index:1}
     </div>
   </aside>
 
-  <!-- 说明 -->
-  <div class="card card-subtle">
-    <h2>「使用说明」<span class="hint">三步上手 · 结果怎么来的 · 取整规则</span></h2>
+  <!-- ⑧ 说明 -->
+  <div class="card card-subtle collapsed">
+    <h2><i class="fa-solid fa-circle-info ico" aria-hidden="true"></i>「使用说明」<span class="hint">三步上手 · 结果怎么来的 · 取整规则</span></h2>
     <div class="body doc">
 
       <h3>一、三步上手</h3>
@@ -1818,7 +1834,7 @@ main{position:relative; z-index:1}
   <div class="mb">
     <label for="mName">档案名称</label>
     <input type="text" id="mName" placeholder="例如：人格名 · 技能2 · 满共鸣">
-    <label for="mNote">备注（可选）</label>
+    <label data-two for="mNote">备注（可选）</label>
     <textarea id="mNote" placeholder="例如：3币满呼吸，敌方45级，用于核对第二循环"></textarea>
   </div>
   <div class="mf">
@@ -1887,7 +1903,7 @@ function clearInactiveCoins(s){
   return cleared;
 }
 /* 版本号单一来源：页头展示与导出文件都读它，升级版本只改这一行 */
-const APP_VERSION = "3.2";
+const APP_VERSION = "3.3";
 
 const LS_CUR  = "jingxi_calc_current_v1";
 const LS_ARCH = "jingxi_calc_archives_v1";
@@ -2150,7 +2166,7 @@ function buildCoinTable(){
       + '<td class="cell-in"><input type="number" step="any" data-bind="coins.'+idx+'.i"></td>'
       + '<td class="cell-auto blank" id="cJ-'+idx+'"></td>'
       + '<td class="cell-in"><input type="number" step="any" data-bind="coins.'+idx+'.fixed"></td>'
-      + '<td class="cell-in"><select data-bind="coins.'+idx+'.extra"><option>否</option><option>是</option></select></td>'
+      + '<td class="cell-in"><label class="switch" title="是否追伤：否 / 是"><input type="checkbox" data-bind="coins.'+idx+'.extra" data-on="是" data-off="否"><span class="rail"><span class="knob"></span></span></label></td>'
       + '<td class="cell-in"><input type="number" step="any" data-bind="coins.'+idx+'.coef"></td>'
       + '<td class="cell-auto blank" id="cN-'+idx+'"></td>'
       + '<td class="cell-auto blank" id="cO-'+idx+'"></td>'
@@ -2160,7 +2176,7 @@ function buildCoinTable(){
     + '<div class="empty-state">'
     +   '<div class="empty-shards"><i></i><i></i><i></i></div>'
     +   '<div class="empty-title">还没有启用任何硬币</div>'
-    +   '<div class="empty-sub">把「硬币数量」设为 1 以上，硬币行会依次浮现</div>'
+    +   '<div class="empty-sub">把「硬币数量」设为 1 以上，硬币明细行会依次显示</div>'
     + '</div></td></tr>';
   $("coinBody").innerHTML = html;
 }
@@ -2215,8 +2231,16 @@ function scheduleRefresh(){
 function setOut(id, v, dp){
   const el = $(id); if(!el) return;
   const txt = fmt(v, dp);
-  el.textContent = (txt === "" ? "—" : txt);
+  const next = (txt === "" ? "—" : txt);
+  const changed = el.textContent !== next;
+  el.textContent = next;
   el.classList.toggle("blank", txt === "");
+  // 只给两个主结果加落位反馈，40 多个输出框全部闪会显得吵闹
+  if(changed && (id === "o-total" || id === "o-clash") &&
+     !(window.matchMedia && matchMedia("(prefers-reduced-motion:reduce)").matches)){
+    const box = el.closest(".bigres");
+    if(box){ box.classList.remove("bump"); void box.offsetWidth; box.classList.add("bump"); }
+  }
 }
 function setCell(id, v, dp){
   const el = $(id); if(!el) return;
@@ -2647,7 +2671,10 @@ function syncSkillPick(){
 function syncInputs(){
   document.querySelectorAll("[data-bind]").forEach(el => {
     const v = getByPath(el.dataset.bind);
-    if(el.type === "checkbox") el.checked = !!v;
+    if(el.type === "checkbox"){
+      // 开关（是/否）用 data-on / data-off 映射，普通复选框仍按布尔值处理
+      el.checked = el.dataset.on ? (String(v) === el.dataset.on) : !!v;
+    }
     else el.value = (v === null || v === undefined) ? "" : v;
   });
 }
@@ -3297,7 +3324,7 @@ function buildBgSparks(){
   const box = $("bgSparks");
   if(!box) return;
   let h = "";
-  for(let i = 0; i < 20; i++){
+  for(let i = 0; i < 14; i++){
     const size = 1.6 + Math.random() * 3.2;
     h += '<i class="spark" style="left:' + (Math.random() * 98).toFixed(1) + '%;'
        + 'top:' + (Math.random() * 96).toFixed(1) + '%;'
@@ -3363,38 +3390,38 @@ function buildDrawerShards(){
   box.innerHTML = h;
 }
 
-let bgShards = [], bgTick = false;
+let bgShards = [];
+/* 背景玻璃渣：一次性铺好 DOM，之后完全由 CSS 动画驱动。
+   刻意不做滚动视差——滚动里逐帧写 transform 会和输入线程抢时间，收益却很小。 */
 function buildBgShards(){
   const layer = $("bgShardHost");
   if(!layer) return;
-  layer.innerHTML = "";
-  bgShards = [];
-  for(let i = 0; i < 9; i++){
-    const wrap = document.createElement("div");
-    wrap.className = "bg-shard-wrap";
-    wrap.style.left = (Math.random() * 90).toFixed(1) + "%";
-    wrap.style.top = (Math.random() * 88).toFixed(1) + "%";
-    // 加大尺寸：隔着毛玻璃模糊后依然能看出轮廓
-    wrap.style.setProperty("--w", (70 + Math.random() * 150).toFixed(0) + "px");
-    wrap.style.setProperty("--h", (55 + Math.random() * 115).toFixed(0) + "px");
-    wrap.style.setProperty("--fd", (9 + Math.random() * 9).toFixed(1) + "s");
-    const sp = 0.10 + Math.random() * 0.26;
-    wrap.dataset.speed = sp.toFixed(2);
-    wrap.innerHTML = '<i class="bg-shard"></i>';
-    layer.appendChild(wrap);
-    bgShards.push(wrap);
+  try{
+    if(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  }catch(e){}
+  let html = "";
+  for(let i = 0; i < 16; i++){
+    const big = i < 6;                                  // 6 片大一些的，10 片细渣
+    const w = big ? 44 + Math.random() * 54 : 9 + Math.random() * 17;
+    const h = big ? 36 + Math.random() * 46 : 8 + Math.random() * 14;
+    const dur = 18 + Math.random() * 18;                // 18~36s 一轮，慢到不会抢注意力
+    const dly = -Math.random() * dur;                   // 负延迟：开场时就已经散在各个相位
+    const o = big ? 0.13 + Math.random() * 0.07 : 0.22 + Math.random() * 0.16;
+    html += '<span class="bg-shard-wrap" style="left:' + (Math.random() * 96).toFixed(1) + '%;'
+      + 'top:' + (6 + Math.random() * 88).toFixed(1) + '%;'
+      + '--w:' + w.toFixed(0) + 'px;--h:' + h.toFixed(0) + 'px;'
+      + '--dur:' + dur.toFixed(1) + 's;--dly:' + dly.toFixed(1) + 's;'
+      + '--o:' + o.toFixed(2) + ';'
+      + '--dx:' + (Math.random() * 72 - 36).toFixed(0) + 'px;'
+      + '--dy:-' + (90 + Math.random() * 150).toFixed(0) + 'px;'
+      + '--rot:' + Math.round(Math.random() * 220 - 110) + 'deg">'
+      + '<i class="bg-shard"></i></span>';
   }
-  updateBgShards();
+  layer.innerHTML = html;
+  bgShards = layer.children;
 }
-function updateBgShards(){
-  const y = window.scrollY || window.pageYOffset || 0;
-  for(let i = 0; i < bgShards.length; i++){
-    const el = bgShards[i];
-    const sp = parseFloat(el.dataset.speed) || 0.2;
-    // 负号：页面下滚时碎片向上浮，速度慢于页面 -> 产生纵深
-    el.style.transform = "translate3d(0," + (-y * sp).toFixed(1) + "px,0)";
-  }
-}
+/* 保留空实现：滚动只做一次校准，不再逐帧写样式 */
+function updateBgShards(){}
 
 /* ================= 开场动画 ================= */
 const LS_BOOT = "jingxi_boot_v1";
@@ -3427,16 +3454,24 @@ function endBoot(){
   const boot = $("boot");
   if(!boot || boot.classList.contains("hide")) return;
   boot.classList.add("hide");
-  setTimeout(() => { boot.style.display = "none"; }, 720);
+  // 直接移除节点：开场动画的合成层与动画随之释放，页面回到稳态
+  setTimeout(() => { if(boot && boot.parentNode) boot.parentNode.removeChild(boot); }, 430);
 }
 function playBoot(){
   const boot = $("boot");
   if(!boot) return;
+  // 系统开了「减少动态效果」就整段跳过：动画被禁用时开场会停在黑屏上
+  try{
+    if(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches){
+      if(boot.parentNode) boot.parentNode.removeChild(boot);
+      return;
+    }
+  }catch(e){}
   bootPlayed = true;
   boot.style.display = "flex";
   boot.classList.add("on");
   makeShards();
-  setTimeout(endBoot, 1900);          // 自动结束
+  setTimeout(endBoot, 1750);          // 自动结束
   boot.addEventListener("click", endBoot);   // 点一下可跳过
 }
 
@@ -3453,7 +3488,9 @@ function applyTheme(t){
   if(t === "light") document.documentElement.setAttribute("data-theme", "light");
   else document.documentElement.removeAttribute("data-theme");
   const b = $("btnTheme");
-  if(b) b.textContent = (t === "light" ? "🌙 深色" : "☀️ 浅色");
+  if(b) b.innerHTML = (t === "light"
+    ? '<i class="fa-solid fa-moon" aria-hidden="true"></i>深色'
+    : '<i class="fa-solid fa-sun" aria-hidden="true"></i>浅色');
   // 折线图的线稿颜色是 JS 画上去的，主题一变就要重绘才能跟随
   if(lastSweep) renderSweep(lastSweep.data, lastSweep.key);
 }
@@ -3480,7 +3517,16 @@ function updateLoopModeUI(){
   const bar = $("loopModeBar");
   if(bar) bar.classList.toggle("active", on);
   const tx = $("loopTx");
-  if(tx) tx.textContent = "T" + (loopModeIdx + 1);
+  if(tx){
+    const nv = "T" + (loopModeIdx + 1);
+    if(tx.textContent !== nv){
+      tx.textContent = nv;
+      // 回合变了才闪一下，避免每次重绘都跳
+      if(!(window.matchMedia && matchMedia("(prefers-reduced-motion:reduce)").matches)){
+        tx.classList.remove("pulse"); void tx.offsetWidth; tx.classList.add("pulse");
+      }
+    }
+  }
   const btn = $("btnNextT");
   if(btn) btn.disabled = !on;
   const prev = $("btnPrevT");
@@ -3533,7 +3579,9 @@ function nextTurn(){
 /* 把表头高度写进 --hd-h，供抽屉与遮罩定位使用 */
 function syncHeaderVar(){
   const hd = document.querySelector("header");
-  const h = hd ? Math.round(hd.getBoundingClientRect().height) : 0;
+  // 注意：zoom 子树里 getBoundingClientRect 返回的是「已乘 zoom」的值，
+  // offsetHeight 才是布局 px，--hd-h 后续还要被 CSS 再放大一次，所以必须用 offsetHeight。
+  const h = hd ? Math.round(hd.offsetHeight) : 0;
   document.documentElement.style.setProperty("--hd-h", h + "px");
 }
 
@@ -3784,11 +3832,64 @@ function selectAll(el){
   if(el && el.matches && el.matches("input")){ try{ el.select(); }catch(err){} }
 }
 
+/* 卡片展开 / 收起：用 WAAPI 过渡真实高度，收起动画结束后才 display:none，
+   避免内容被瞬间裁掉；系统开启「减少动态效果」时退化为直接切换 */
+const REDUCE_MOTION = (() => {
+  try{ return window.matchMedia("(prefers-reduced-motion: reduce)").matches; }
+  catch(e){ return false; }
+})();
+
+function toggleCard(card){
+  const body = card.querySelector(":scope > .body");
+  if(!body || typeof body.animate !== "function" || REDUCE_MOTION){
+    card.classList.toggle("collapsed");
+    return;
+  }
+  /* 先结束上一次动画，避免连点时错位 */
+  if(card._foldAnim){ try{ card._foldAnim.cancel(); }catch(err){} card._foldAnim = null; }
+  if(card._foldTimer){ clearTimeout(card._foldTimer); card._foldTimer = null; }
+
+  const willCollapse = !card.classList.contains("collapsed");
+  if(!willCollapse) card.classList.remove("collapsed");   // 展开：立刻恢复显示
+  const h = body.offsetHeight;
+  body.style.overflow = "hidden";
+
+  /* 收尾：动画被取消 / 计时器兜底时都走这里，保证状态一定收敛 */
+  let done = false;
+  const finish = () => {
+    if(done) return;
+    done = true;
+    if(card._foldTimer){ clearTimeout(card._foldTimer); card._foldTimer = null; }
+    body.style.overflow = "";
+    if(willCollapse) card.classList.add("collapsed");
+    card._foldAnim = null;
+  };
+
+  const dur = willCollapse ? 210 : 250;
+  const frames = willCollapse
+    ? [{height:h + "px", opacity:1}, {height:"0px", opacity:.25}]
+    : [{height:"0px", opacity:.25}, {height:h + "px", opacity:1}];
+  const a = body.animate(frames, {
+    duration: dur,
+    easing: willCollapse ? "cubic-bezier(.4,0,.6,1)" : "cubic-bezier(.22,.9,.28,1)"
+  });
+  card._foldAnim = a;
+  a.onfinish = finish;
+  a.oncancel = finish;
+  /* 兜底：动画时钟被冻结（后台标签页等）时也不至于卡住 */
+  card._foldTimer = setTimeout(finish, dur + 160);
+}
+
 /* ================= 事件绑定 ================= */
 function bindEvents(){
   /* 把一个绑定控件的当前值写入 state（调用方负责先 pushUndo） */
   function writeBinding(t, b){
-    if(t.type === "checkbox"){ setByPath(b, t.checked); return; }
+    if(t.type === "checkbox"){
+      // 是/否 开关：勾上写 data-on（默认「是」），取消写 data-off（默认「否」）
+      const on = t.dataset.on;
+      setByPath(b, on ? (t.checked ? on : (t.dataset.off || "")) : t.checked);
+      return;
+    }
     if(t.tagName === "SELECT"){ setByPath(b, t.value); return; }
     if(t.type === "number"){
       const raw = t.value;
@@ -3850,7 +3951,7 @@ function bindEvents(){
     h2.addEventListener("click", e => {
       if(e.target.closest("button,input,select,label,a")) return;
       const card = h2.closest(".card");
-      if(card) card.classList.toggle("collapsed");
+      if(card) toggleCard(card);
     });
   });
 
@@ -4288,11 +4389,6 @@ function bindEvents(){
   buildBgSparks();
   buildBgShards();
   decorateCards();
-  window.addEventListener("scroll", () => {
-    if(bgTick) return;
-    bgTick = true;
-    requestAnimationFrame(() => { bgTick = false; updateBgShards(); });
-  }, {passive:true});
 
   updateLoopModeUI();
   syncHeaderVar();
@@ -4328,6 +4424,22 @@ function bindEvents(){
   refresh();
   renderArchives();
   updateUndoUI();
+})();
+</script>
+<script>
+/* 「更多」下拉：点空白处 / Esc 关闭（纯界面行为，不涉及任何计算逻辑） */
+(function(){
+  var more = document.querySelector(".tmore");
+  if(!more) return;
+  document.addEventListener("click", function(e){
+    if(more.open && !more.contains(e.target)) more.open = false;
+  });
+  document.addEventListener("keydown", function(e){
+    if(e.key === "Escape" && more.open) more.open = false;
+  });
+  more.querySelectorAll(".tmore-pop button").forEach(function(b){
+    b.addEventListener("click", function(){ more.open = false; });
+  });
 })();
 </script>
 </body>
